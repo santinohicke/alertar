@@ -1,0 +1,3 @@
+Search for and install the following extensions to run on Visual Studio Code
+Wokwi Simulator extension 
+PlatformIO IDE extension

@@ -17,10 +17,13 @@ struct Muestra {
 };
 
 inline std::string serializar(const Muestra &s, uint64_t sec, const char *dispositivo,
-                             const char *paso, const char *arranque) {
+                             const char *paso, const char *arranque, const char *instalacion = nullptr) {
   StaticJsonDocument<1536> doc;
   char id[81];
-  snprintf(id, sizeof(id), "%s-%llu", dispositivo, (unsigned long long)sec);
+  if (instalacion)
+    snprintf(id, sizeof(id), "%s-%s-%llu", dispositivo, instalacion, (unsigned long long)sec);
+  else
+    snprintf(id, sizeof(id), "%s-%llu", dispositivo, (unsigned long long)sec);
   doc["version"] = 1;
   doc["evento_id"] = id;
   doc["dispositivo_id"] = dispositivo;

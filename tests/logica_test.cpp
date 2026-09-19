@@ -36,11 +36,16 @@ int main() {
   Carril pausa=medir(120); pausa.actualizar(280,1000);
   pausa.actualizar(-1,2000); pausa.actualizar(280,90000);
   assert(pausa.ocupacionMs==1000);
-  for(float d : {-1.f,0.f,1.f,400.1f,INFINITY,NAN}) {
+  // La implementación vigente admite 10 cm de margen por timing de Wokwi.
+  for(float d : {-1.f,0.f,1.f,410.1f,INFINITY,NAN}) {
     Carril c; c.actualizar(d,0); codigo(c,libre,w,"ERR-003");
   }
   Carril tolerancia; tolerancia.actualizar(400,0);
   assert(tolerancia.valido && tolerancia.altura==0);
+  for (float d : {400.1f, 410.f}) {
+    Carril margen; margen.actualizar(d,0);
+    assert(margen.valido && margen.altura==0);
+  }
   w.actualizar(2001,0); codigo(libre,libre,w,"ERR-002");
   w.actualizar(2001,19999); assert(!w.confirmada);
   w.actualizar(2001,20000); codigo(falla,falla,w,"ERR-001");

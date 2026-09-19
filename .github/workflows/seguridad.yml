@@ -1,0 +1,17 @@
+name: Verificar secretos
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+      - name: Buscar credenciales y archivos sensibles
+        run: bash scripts/verificar_secretos.sh

@@ -15,6 +15,13 @@ int main() {
   assert(parsed["obstruccion_carril1_cm"].isNull());
   assert(parsed["obstruccion_carril2_cm"].as<float>() == 13.5);
   assert(parsed["secuencia"].as<int>() == 42);
+  const auto instalado = protocolo::serializar(s, 42, "esp32-01", "tunel-01", "boot-prueba",
+      "0123456789abcdef0123456789abcdef");
+  StaticJsonDocument<1536> nuevo;
+  assert(!deserializeJson(nuevo, instalado));
+  assert(nuevo["evento_id"].as<std::string>() ==
+      "esp32-01-0123456789abcdef0123456789abcdef-42");
+  assert(nuevo["secuencia"].as<int>() == 42);
   const std::string ack = "{\"guardado\":true,\"evento_id\":\"esp32-01-42\"}";
   assert(protocolo::confirmar(201, ack, "esp32-01-42"));
   assert(protocolo::confirmar(200, ack, "esp32-01-42"));

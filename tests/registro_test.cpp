@@ -6,13 +6,16 @@
 struct Memoria : registro::Disco {
   std::map<std::string, std::string> files;
   bool falloEscritura = false, falloRename = false;
+  unsigned listados = 0, lecturas = 0;
   std::vector<std::string> listar(const std::string &dir) override {
+    ++listados;
     std::vector<std::string> result;
     for (const auto &entry : files)
       if (entry.first.find(dir + "/") == 0) result.push_back(entry.first.substr(dir.size()+1));
     return result;
   }
   bool leer(const std::string &path, std::string &out) override {
+    ++lecturas;
     auto it = files.find(path);
     if (it == files.end()) return false;
     out = it->second; return true;
@@ -33,8 +36,14 @@ int main() {
   Memoria disk;
   registro::Cola queue(disk, 2, 1);
   std::string name, payload;
+  for (unsigned i=0; i<1000; ++i) {
+    assert(queue.pendientes() == 0);
+    assert(!queue.primero(name, payload));
+  }
+  assert(disk.listados == 2 && disk.lecturas == 0); // Cero acceso a flash en reposo.
   assert(queue.guardar(10, "{\"secuencia\":10}") == R::OK);
   assert(queue.guardar(2, "{\"secuencia\":2}") == R::OK);
+  assert(disk.listados == 2); // Guardar tampoco recorre directorios.
   assert(queue.guardar(3, "nuevo") == R::LLENO);
   assert(queue.primero(name, payload) && name == registro::nombre(2));
   assert(queue.guardar(2, payload) == R::OK);

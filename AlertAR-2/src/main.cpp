@@ -47,7 +47,9 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 // ============================================================
 
 #include "logica.h"
-// #include "conectividad.h"
+#include "conectividad.h"
+#include "conectividad_config.h"
+#include "ultrasonido.h"
 
 alertar::Agua agua;
 
@@ -59,39 +61,7 @@ alertar::Carril carril2;
 // ============================================================
 
 float leerDistanciaCm(int trig, int echo) {
-
-  // Asegurar pulso limpio
-  digitalWrite(trig, LOW);
-  delayMicroseconds(2);
-
-  // Disparo ultrasónico
-  digitalWrite(trig, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trig, LOW);
-
-  // Esperar eco.
-  // Timeout de 30 ms para evitar bloquear demasiado el ESP32.
-  const unsigned long duracion =
-      pulseIn(echo, HIGH, 30000UL);
-
-  // Si no llegó ningún eco
-  if (duracion == 0) {
-    return -1.0f;
-  }
-
-  // Velocidad del sonido ≈ 343 m/s
-  float distancia =
-      duracion * 0.0343f / 2.0f;
-
-  // Wokwi puede quedar apenas por encima de 400 cm
-  // cuando el slider está completamente al máximo.
-  if (distancia > 400.0f &&
-      distancia <= 410.0f) {
-
-    distancia = 400.0f;
-  }
-
-  return distancia;
+  return ultrasonido::leer(trig, echo);
 }
 
 // ============================================================
@@ -385,7 +355,8 @@ void setup() {
       "Iniciando..."
   );
 
-  // conectividad::iniciar();
+  ultrasonido::iniciar(TRIG1, ECHO1, TRIG2, ECHO2);
+  if (conexion_config::HABILITADA) conectividad::iniciar();
 }
 
 // ============================================================
@@ -394,17 +365,11 @@ void setup() {
 
 void loop() {
 
-  // conectividad::comandos();
+  if (conexion_config::HABILITADA) conectividad::comandos();
 
   // Tiempo de referencia para esta iteración.
   const uint32_t ahora =
       millis();
-
-  // ----------------------------------------------------------
-  // Delay temporal para pruebas de rendimiento en Wokwi
-  // ----------------------------------------------------------
-
-  delay(50);
 
   // ==========================================================
   // SENSOR DE AGUA
@@ -550,14 +515,10 @@ void loop() {
   // CONECTIVIDAD
   // ==========================================================
 
-  // conectividad::observar(
-  //     estado,
-  //     carril1,
-  //     carril2,
-  //     agua
-  // );
-
-  // conectividad::informar();
+  if (conexion_config::HABILITADA) {
+    conectividad::observar(estado, carril1, carril2, agua);
+    conectividad::informar();
+  }
 
   // ==========================================================
   // FIN DEL CICLO

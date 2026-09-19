@@ -1,0 +1,53 @@
+# Sistema operativo y editores
+.DS_Store
+Thumbs.db
+**/.vscode/
+**/.idea/
+
+# Entornos, caches y resultados de compilacion
+**/.venv/
+**/venv/
+**/__pycache__/
+**/.pytest_cache/
+**/.test-tmp/
+**/.pio/
+**/build/
+*.py[cod]
+*.bin
+*.elf
+*.map
+
+# Secretos y configuracion local
+**/.env
+**/.env.*
+!**/.env.example
+**/*secrets*.h
+!**/*secrets.example.h
+**/*secret*.json
+**/*credentials*.json
+**/*.pem
+**/*.key
+**/*.p12
+secrets/
+
+# Datos, respaldos y paquetes que pueden incluir secretos compilados
+**/instance/
+*.sqlite
+*.sqlite3
+*.db
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+backups/
+
+# Backend privado: se documenta la interfaz, pero el codigo no se publica aun
+backend/
+deploy/
+
+# Evidencia y notas operativas locales (hosts, rutas, IP y diagnosticos)
+verificaciones/
+CONECTIVIDAD.md
+IMPLEMENTACION.md
+PANEL_RASPBERRY.md
+handoff.md

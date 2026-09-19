@@ -28,6 +28,8 @@ inline bool esLog(const std::string &s) {
 class Cola {
   Disco &disco;
   size_t capacidad, retenidos;
+  bool cargado = false;
+  std::vector<std::string> indice, enviados;
   std::vector<std::string> archivos(const std::string &dir) {
     auto result = disco.listar(dir);
     result.erase(std::remove_if(result.begin(), result.end(),
@@ -38,30 +40,50 @@ class Cola {
  public:
   enum class Resultado { OK, LLENO, ERROR };
   Cola(Disco &d, size_t cap, size_t ret) : disco(d), capacidad(cap), retenidos(ret) {}
-  size_t pendientes() { return archivos("/pendientes").size(); }
+  void cargar() {
+    if (cargado) return;
+    indice = archivos("/pendientes");
+    enviados = archivos("/enviados");
+    cargado = true;
+  }
+  size_t pendientes() { cargar(); return indice.size(); }
   Resultado guardar(uint64_t secuencia, const std::string &json) {
-    auto final = "/pendientes/" + nombre(secuencia);
+    cargar();
+    auto name = nombre(secuencia);
+    auto final = "/pendientes/" + name;
     std::string previo;
-    if (disco.leer(final, previo)) return previo == json ? Resultado::OK : Resultado::ERROR;
+    if (std::binary_search(indice.begin(), indice.end(), name))
+      return disco.leer(final, previo) && previo == json ? Resultado::OK : Resultado::ERROR;
+    if (std::binary_search(enviados.begin(), enviados.end(), name)) return Resultado::ERROR;
     if (pendientes() >= capacidad) return Resultado::LLENO;
     // El temporal nunca se envía. Solo el rename publica un registro completo.
     if (!disco.escribir("/evento.tmp", json)) return Resultado::ERROR;
     if (!disco.leer("/evento.tmp", previo) || previo != json) return Resultado::ERROR;
-    return disco.mover("/evento.tmp", final) ? Resultado::OK : Resultado::ERROR;
+    if (!disco.mover("/evento.tmp", final)) return Resultado::ERROR;
+    indice.insert(std::lower_bound(indice.begin(), indice.end(), name), name);
+    return Resultado::OK;
   }
   bool primero(std::string &archivo, std::string &json) {
-    auto pending = archivos("/pendientes");
-    if (pending.empty()) return false;
-    archivo = pending.front();
+    cargar();
+    if (indice.empty()) return false;
+    archivo = indice.front();
     return disco.leer("/pendientes/" + archivo, json);
   }
   bool confirmar(const std::string &archivo) {
-    if (!esLog(archivo)) return false;
+    cargar();
+    if (!esLog(archivo) || !std::binary_search(indice.begin(), indice.end(), archivo)) return false;
     // Si el reinicio ocurrió antes del rename se reintentará el mismo JSON.
     if (!disco.mover("/pendientes/" + archivo, "/enviados/" + archivo)) return false;
-    auto sent = archivos("/enviados");
-    for (size_t i = 0; i + retenidos < sent.size(); ++i) {
-      if (!disco.borrar("/enviados/" + sent[i])) return false;
+    indice.erase(std::lower_bound(indice.begin(), indice.end(), archivo));
+    enviados.insert(std::lower_bound(enviados.begin(), enviados.end(), archivo), archivo);
+    limpiar();
+    return true;
+  }
+  bool limpiar() {
+    cargar();
+    while (enviados.size() > retenidos) {
+      if (!disco.borrar("/enviados/" + enviados.front())) return false;
+      enviados.erase(enviados.begin());
     }
     return true;
   }

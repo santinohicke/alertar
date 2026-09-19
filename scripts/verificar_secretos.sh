@@ -18,9 +18,9 @@ while IFS= read -r archivo; do
   fi
 done < <(git ls-files)
 
-patron_secretos="BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{30,}|gh[pousr]_[0-9A-Za-z]{20,}|github_pat_[0-9A-Za-z_]{20,}|sk-[0-9A-Za-z_-]{20,}|xox[baprs]-[0-9A-Za-z-]{10,}|(api[_-]?key|password|passwd|secret|token)[A-Za-z0-9_-]*[[:space:]]*(=|:)[[:space:]]*[\"'][^\"'[:space:]]{8,}"
+patron_secretos="BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{30,}|gh[pousr]_[0-9A-Za-z]{20,}|github_pat_[0-9A-Za-z_]{20,}|sk-[0-9A-Za-z_-]{20,}|xox[baprs]-[0-9A-Za-z-]{10,}|#define[[:space:]]+[A-Za-z0-9_]*(api[_-]?key|device[_-]?key|password|passwd|secret|token)[A-Za-z0-9_]*[[:space:]]+[\"'][^\"'[:space:]]{8,}|(api[_-]?key|device[_-]?key|password|passwd|secret|token)[A-Za-z0-9_-]*(\[\])?[[:space:]]*(=|:)[[:space:]]*[\"'][^\"'[:space:]]{8,}"
 
-if git grep -nIE "$patron_secretos" -- . \
+if git grep -nIiE "$patron_secretos" -- . \
     ':(exclude)scripts/verificar_secretos.sh' \
     ':(exclude)**/*secrets.example.h'; then
   echo "ERROR: posible secreto encontrado en archivos rastreados." >&2

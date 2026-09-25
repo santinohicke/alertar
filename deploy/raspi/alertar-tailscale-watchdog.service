@@ -1,0 +1,19 @@
+[Unit]
+Description=AlertAR Tailscale health watchdog
+After=network-online.target tailscaled.service alertar-api.service
+Wants=network-online.target tailscaled.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/bin/python3 /usr/local/libexec/alertar-tailscale-watchdog.py
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+ReadWritePaths=/var/lib/alertar-tailscale-watchdog
+TimeoutStartSec=60

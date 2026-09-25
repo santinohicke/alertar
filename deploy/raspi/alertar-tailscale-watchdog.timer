@@ -1,0 +1,13 @@
+[Unit]
+Description=Run the AlertAR Tailscale watchdog every minute
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=60s
+AccuracySec=10s
+RandomizedDelaySec=5s
+Persistent=true
+Unit=alertar-tailscale-watchdog.service
+
+[Install]
+WantedBy=timers.target

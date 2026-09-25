@@ -139,6 +139,3 @@ Para ejecutar la API en desarrollo local, ver [backend/README.md](backend/README
 
 Las pruebas C++ de `tests/` verifican la lógica de estados, el orden y la capacidad de la cola y el contrato de comunicación. Los ejecutables generados y las evidencias locales no forman parte del repositorio.
 
-## Estado del proyecto
-
-El panel y la API de la Pi estaban publicados y `/health` respondió HTTP 200 el 25/09/2026. Hubo entregas de eventos por HTTPS, pero la estabilidad prolongada de Wokwi → HTTPS → Pi y el ajuste de recuperación siguen pendientes de validación. AlertAR es un prototipo académico: la simulación y las pruebas de software no sustituyen validación eléctrica, ambiental ni de seguridad vial sobre hardware real.

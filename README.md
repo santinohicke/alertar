@@ -2,7 +2,9 @@
 
 AlertAR es un prototipo de ciudad inteligente para monitorear un paso bajo nivel. Un ESP32 toma mediciones de dos carriles y de presencia de agua, evalúa el riesgo localmente, informa el estado mediante semáforo y pantalla LCD, y envía eventos a una API REST cuando tiene conexión.
 
-El repositorio público contiene el firmware, el circuito de simulación y las pruebas de la lógica. **El código del servidor, su configuración, la base de datos y las credenciales no se publican por el momento.**
+**Repositorio:** [Agusttin-0/AlertAR](https://github.com/Agusttin-0/AlertAR) · **Panel público:** [raspi.tail5a3b96.ts.net](https://raspi.tail5a3b96.ts.net/) (requiere autenticación).
+
+El repositorio contiene el firmware, el circuito de simulación, el backend Flask, el panel y los scripts de despliegue. No incluye claves API, bases de datos, respaldos ni firmware compilado. La API FastAPI anterior que ya estaba instalada en la Raspberry Pi no forma parte de este proyecto; el adaptador de `deploy/raspi/` se integra con ella.
 
 ## Cómo funciona
 
@@ -53,11 +55,11 @@ La simulación permite cambiar las distancias y el nivel de agua, observar LEDs 
 
 ### API REST y servidor
 
-El servidor actual se ejecuta fuera de este repositorio en una Raspberry Pi. La aplicación usa Flask para las rutas modernas y el panel, conserva compatibilidad con una API FastAPI anterior mediante un adaptador ASGI y se sirve con Uvicorn. Los eventos se almacenan en SQLite.
+El servicio publicado se ejecuta en una Raspberry Pi. La aplicación usa Flask para las rutas modernas y el panel, conserva compatibilidad con una API FastAPI anterior mediante un adaptador ASGI y se sirve con Uvicorn. Los eventos se almacenan en SQLite. El código de esa API anterior no está incluido aquí.
 
-La API se expone por HTTPS mediante Tailscale Funnel. El firmware usa una clave exclusiva y limitada a ingesta; la clave administrativa del panel nunca se instala en el ESP32. No se publica aquí el nombre real del servidor ni ninguna clave.
+La API se expone en [https://raspi.tail5a3b96.ts.net/](https://raspi.tail5a3b96.ts.net/) mediante Tailscale Funnel. El firmware usa una clave exclusiva y limitada a ingesta; la clave administrativa del panel nunca se instala en el ESP32. La URL es pública, pero ninguna clave está incluida en el repositorio.
 
-Interfaz principal, sin incluir el dominio privado:
+Interfaz principal:
 
 | Método | Ruta | Uso |
 |---|---|---|
@@ -66,8 +68,9 @@ Interfaz principal, sin incluir el dominio privado:
 | `POST` | `/api/dispositivos/{id}/reserva` | Reservar secuencias para una instalación |
 | `GET` | `/api/pasos/{id}/estado` | Consultar el último estado conocido |
 | `GET` | `/api/pasos/{id}/historial` | Consultar eventos anteriores |
+| `GET` | `/api/panel/{id}` | Datos acotados para el panel |
 
-El backend valida el contrato JSON, autentica la ingesta, evita duplicados por identidad y secuencia, limita la frecuencia de solicitudes y separa la fecha de medición de la fecha de recepción. Su código se incorporará más adelante cuando esté listo para publicación.
+El backend en `backend/` valida el contrato JSON, autentica la ingesta, evita duplicados por identidad y secuencia, limita la frecuencia de solicitudes y separa la fecha de medición de la fecha de recepción. La API publicada requiere autenticación; la URL por sí sola no permite escribir eventos ni leer el historial.
 
 ## Ejecutar la simulación
 
@@ -87,7 +90,7 @@ El backend valida el contrato JSON, autentica la ingesta, evita duplicados por i
    ```
 
 3. Para probar solamente sensores, LEDs y LCD, dejar `ALERTAR_CONECTIVIDAD_HABILITADA` en `false`.
-4. Para conectar una instancia autorizada del servidor, completar en el archivo local las dos URLs HTTPS y la clave de dispositivo entregada por el administrador, y cambiar la opción a `true`.
+4. Para conectar una instancia autorizada del servidor, completar en el archivo local la clave de dispositivo entregada por el administrador y cambiar la opción a `true`. La plantilla contiene la URL pública de AlertAR.
 5. Ejecutar **PlatformIO: Build** y luego **Wokwi: Start Simulator** desde la paleta de comandos.
 
 El archivo `include/conectividad_secrets.h` es local y está ignorado por Git. La plantilla pública no contiene valores utilizables.
@@ -112,14 +115,21 @@ AlertAR-2/
     ├── protocolo.h              contrato y confirmaciones
     └── certificado.h            autoridad certificante pública
 tests/                           pruebas nativas de lógica y protocolo
+backend/                         API Flask, panel, ejemplo y pruebas
+deploy/raspi/                    adaptador, instalación y watchdog de la Pi
 tabla_logica.md                  tabla funcional de estados
+CONECTIVIDAD.md                  transporte y límites conocidos
+IMPLEMENTACION.md                componentes y alcance
+PANEL_RASPBERRY.md               despliegue y validación pendiente
 ```
 
 La carpeta `AlertAR/` conserva la primera versión del circuito y del sketch como referencia. El desarrollo y la simulación actuales se realizan en `AlertAR-2/`.
 
+Para ejecutar la API en desarrollo local, ver [backend/README.md](backend/README.md). Ese modo no exige autenticación y debe permanecer en `127.0.0.1`. La instalación de la Pi requiere su API FastAPI anterior; ver [PANEL_RASPBERRY.md](PANEL_RASPBERRY.md).
+
 ## Seguridad antes de publicar
 
-- No agregar `conectividad_secrets.h`, archivos `.env`, claves privadas, bases SQLite, respaldos ni binarios compilados.
+- No agregar `conectividad_secrets.h`, archivos `.env`, claves privadas, bases SQLite, respaldos, registros de diagnóstico ni binarios compilados.
 - No publicar firmware `.bin` o `.elf`: una credencial puede quedar incorporada dentro del binario.
 - Ejecutar `bash scripts/verificar_secretos.sh` antes de cada push.
 - GitHub Actions repite ese control en cada push y pull request.
@@ -131,4 +141,4 @@ Las pruebas C++ de `tests/` verifican la lógica de estados, el orden y la capac
 
 ## Estado del proyecto
 
-AlertAR es un prototipo académico y de simulación. Las mediciones de Wokwi y las pruebas de software no sustituyen validación eléctrica, ambiental ni de seguridad vial sobre hardware real.
+El panel y la API de la Pi estaban publicados y `/health` respondió HTTP 200 el 25/09/2026. Hubo entregas de eventos por HTTPS, pero la estabilidad prolongada de Wokwi → HTTPS → Pi y el ajuste de recuperación siguen pendientes de validación. AlertAR es un prototipo académico: la simulación y las pruebas de software no sustituyen validación eléctrica, ambiental ni de seguridad vial sobre hardware real.

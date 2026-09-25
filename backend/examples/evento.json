@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "evento_id": "esp32-01-1",
+  "dispositivo_id": "esp32-01",
+  "paso_id": "tunel-01",
+  "arranque_id": "arranque-demo-01",
+  "secuencia": 1,
+  "uptime_ms": 10000,
+  "medido_en": null,
+  "codigo": "OK-001",
+  "diagnostico": "Situacion normal",
+  "obstruccion_carril1_cm": 0,
+  "obstruccion_carril2_cm": 0,
+  "sensor1_valido": true,
+  "sensor2_valido": true,
+  "agua_activa": false,
+  "agua_pendiente": false
+}

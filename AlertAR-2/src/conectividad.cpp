@@ -13,6 +13,7 @@
 #include <WiFiClientSecure.h>
 #include <atomic>
 #include <esp_partition.h>
+#include <esp_sntp.h>
 #include <esp_timer.h>
 #include <time.h>
 
@@ -251,6 +252,10 @@ void transmitir(void *) {
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
   configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+  // En hardware corrige deriva normal; en Wokwi evita que el tiempo simulado
+  // se aleje del reloj real de la API. No modifica la fecha ya persistida de
+  // eventos pendientes, que deben seguir apareciendo como históricos.
+  esp_sntp_set_sync_interval(SINCRONIZACION_RELOJ_MS);
   unsigned fallos = 0;
   uint32_t ultimoIntento = millis() - 15000;
   bool desconectadoPorUsuario = false;

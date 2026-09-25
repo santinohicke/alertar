@@ -16,6 +16,14 @@ Thumbs.db
 *.bin
 *.elf
 *.map
+*.sqlite3-wal
+*.sqlite3-shm
+*.sqlite3-journal
+*.db-wal
+*.db-shm
+*.db-journal
+*.log
+*.ndjson
 
 # Secretos y configuracion local
 **/.env
@@ -28,7 +36,7 @@ Thumbs.db
 **/*.pem
 **/*.key
 **/*.p12
-secrets/
+**/secrets/
 
 # Datos, respaldos y paquetes que pueden incluir secretos compilados
 **/instance/
@@ -40,14 +48,8 @@ secrets/
 *.tar.gz
 *.tgz
 backups/
-
-# Backend privado: se documenta la interfaz, pero el codigo no se publica aun
-backend/
-deploy/
+/AlertAR-2 2/
 
 # Evidencia y notas operativas locales (hosts, rutas, IP y diagnosticos)
 verificaciones/
-CONECTIVIDAD.md
-IMPLEMENTACION.md
-PANEL_RASPBERRY.md
 handoff.md

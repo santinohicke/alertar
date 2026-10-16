@@ -125,7 +125,21 @@ def create_app(config=None):
                 tamano INTEGER NOT NULL,
                 PRIMARY KEY(dispositivo_id, instalacion_id)
             );
+            CREATE TABLE IF NOT EXISTS tuneles (
+                paso_id TEXT PRIMARY KEY,
+                nombre TEXT NOT NULL,
+                dispositivo_id TEXT NOT NULL UNIQUE,
+                api_key TEXT NOT NULL UNIQUE,
+                creado_en TEXT NOT NULL
+            );
         """)
+        tunel = connection.execute("SELECT paso_id FROM tuneles WHERE paso_id='tunel-01'").fetchone()
+        if not tunel:
+            default_dev_key = app.config.get("DEVICE_KEY") or "DU7KynU5EeUltr3BZn2eVWB9izZk0JBg"
+            connection.execute(
+                "INSERT INTO tuneles (paso_id, nombre, dispositivo_id, api_key, creado_en) VALUES (?, ?, ?, ?, ?)",
+                ("tunel-01", "Túnel 01", "esp32-01", default_dev_key, utcnow().isoformat())
+            )
         connection.commit()
         g.pop("db").close()
 
@@ -149,14 +163,27 @@ def create_app(config=None):
         db().execute("SELECT id FROM eventos LIMIT 1").fetchone()
         return jsonify(estado="ok", base_datos="ok")
 
+    def get_dispositivos():
+        try:
+            rows = db().execute("SELECT paso_id, dispositivo_id FROM tuneles").fetchall()
+            if rows:
+                return {r["paso_id"]: r["dispositivo_id"] for r in rows}
+        except Exception:
+            pass
+        return current_app.config.get("DISPOSITIVOS", {"tunel-01": "esp32-01"})
+
     @app.post("/api/eventos")
     def receive():
         try:
             event = validate(request.get_json())
         except ValueError as error:
             return jsonify(error="evento_invalido", detalle=str(error)), 400
-        if app.config["DISPOSITIVOS"].get(event["paso_id"]) != event["dispositivo_id"]:
+        dispositivos = get_dispositivos()
+        if dispositivos.get(event["paso_id"]) != event["dispositivo_id"]:
             return jsonify(error="dispositivo_o_paso_no_registrado"), 400
+        auth_paso = getattr(g, "auth_paso_id", None)
+        if auth_paso and auth_paso != event["paso_id"]:
+            return jsonify(error="clave_no_corresponde_a_este_tunel"), 403
         payload = json.dumps(event, sort_keys=True, ensure_ascii=False, allow_nan=False)
         connection = db()
         received = utcnow().isoformat()
@@ -179,8 +206,12 @@ def create_app(config=None):
     @app.post("/api/dispositivos/<dispositivo_id>/reserva")
     def reserve(dispositivo_id):
         """Rango estable por instalación de flash; repetir el POST es idempotente."""
-        if dispositivo_id not in app.config["DISPOSITIVOS"].values():
+        dispositivos = get_dispositivos()
+        if dispositivo_id not in dispositivos.values():
             return jsonify(error="dispositivo_no_registrado"), 404
+        auth_dev = getattr(g, "auth_device_id", None)
+        if auth_dev and auth_dev != dispositivo_id:
+            return jsonify(error="clave_no_corresponde_a_este_dispositivo"), 403
         body = request.get_json()
         if (not isinstance(body, dict) or set(body) != {"instalacion_id"}
                 or not isinstance(body["instalacion_id"], str)

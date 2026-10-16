@@ -83,7 +83,7 @@ class PanelTests(unittest.TestCase):
         self.assertEqual(response.content_type, "application/json")
         self.assertEqual(response.headers["Cache-Control"], "no-store")
         self.assertIn("frame-ancestors 'none'", response.headers["Content-Security-Policy"])
-        script = (ROOT / "static/panel.js").read_text()
+        script = (ROOT / "static/panel.js").read_text(encoding="utf-8")
         self.assertNotIn("innerHTML", script)
 
 

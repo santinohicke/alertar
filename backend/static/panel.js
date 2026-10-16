@@ -3,6 +3,9 @@
 const $ = id => document.getElementById(id);
 
 let activeView = "monitor";
+let currentTunnel = "tunel-01";
+let tunnelsList = [];
+let monitorAbortController = null;
 let running = false, timer, lastSuccess = 0, freshUntil = 0;
 let historyPage = 1, historyLimit = 25, historyTotal = 0, historyLoading = false, historyEvents = [];
 let exportLoading = false;
@@ -145,9 +148,34 @@ function rangeText(r) {
    MONITOREO
    ========================================================= */
 
+function renderMonitorEvents(eventsList) {
+  const evs = eventsList || [];
+  if (evs.length) {
+    const rows = evs.map(item => {
+      const tr = document.createElement("tr");
+      [
+        fmtDate(item.medido_en),
+        item.codigo,
+        item.diagnostico,
+        height(item, 1),
+        height(item, 2),
+        String(item.secuencia)
+      ].forEach(v => tr.append(cell(v)));
+      return tr;
+    });
+    $("eventos").replaceChildren(...rows);
+  } else {
+    const tr = document.createElement("tr");
+    const td = cell("Sin registros todavía.");
+    td.colSpan = 6;
+    tr.append(td);
+    $("eventos").replaceChildren(tr);
+  }
+}
+
 function renderMonitor(data) {
   const state =
-    data.estado;
+    data.estado || {};
 
   const e =
     state.ultimo_estado_conocido;
@@ -166,6 +194,12 @@ function renderMonitor(data) {
     $("codigo").textContent =
       "SIN DATOS";
 
+    $("carril1").textContent = "—";
+    $("valido1").textContent = "Sin medición";
+    $("carril2").textContent = "—";
+    $("valido2").textContent = "Sin medición";
+    $("agua").textContent = "—";
+    renderMonitorEvents(data.eventos);
     return;
   }
 
@@ -229,45 +263,7 @@ function renderMonitor(data) {
     water(e);
 
 
-  const rows =
-    (data.eventos || []).map(
-      item => {
-        const tr =
-          document.createElement("tr");
-
-        [
-          fmtDate(item.medido_en),
-          item.codigo,
-          item.diagnostico,
-          height(item, 1),
-          height(item, 2),
-          String(item.secuencia)
-        ].forEach(
-          v => tr.append(cell(v))
-        );
-
-        return tr;
-      }
-    );
-
-
-  if (rows.length) {
-    $("eventos")
-      .replaceChildren(...rows);
-  } else {
-    const tr =
-      document.createElement("tr");
-
-    const td =
-      cell("Sin registros todavía.");
-
-    td.colSpan = 6;
-
-    tr.append(td);
-
-    $("eventos")
-      .replaceChildren(tr);
-  }
+  renderMonitorEvents(data.eventos);
 }
 
 
@@ -287,36 +283,36 @@ async function refresh() {
   $("actualizar").disabled =
     true;
 
-
-  const controller =
+  monitorAbortController =
     new AbortController();
+  const reqTunnel =
+    currentTunnel;
 
   const timeout =
     setTimeout(
-      () => controller.abort(),
+      () => {
+        if (monitorAbortController) monitorAbortController.abort();
+      },
       8000
     );
 
   let delay =
     15000;
 
-
   try {
     const r =
       await fetch(
-        "/api/panel/tunel-01",
+        "/api/panel/" + encodeURIComponent(reqTunnel),
         {
           cache: "no-store",
-          signal: controller.signal
+          signal: monitorAbortController.signal
         }
       );
-
 
     if (r.status === 401) {
       location.assign("/login");
       return;
     }
-
 
     if (
       r.status === 429 ||
@@ -325,22 +321,23 @@ async function refresh() {
       delay = 30000;
     }
 
-
     if (!r.ok) {
       throw new Error(
         "API no disponible"
       );
     }
 
+    const data =
+      await r.json();
 
-    renderMonitor(
-      await r.json()
-    );
+    if (reqTunnel !== currentTunnel) {
+      return;
+    }
 
+    renderMonitor(data);
 
     lastSuccess =
       Date.now();
-
 
     $("conexion").textContent =
       `Consulta completada: ${
@@ -349,6 +346,9 @@ async function refresh() {
       }`;
 
   } catch (e) {
+    if (e.name === "AbortError" && reqTunnel !== currentTunnel) {
+      return;
+    }
     console.error(e);
 
     freshUntil = 0;
@@ -369,7 +369,6 @@ async function refresh() {
 
     $("actualizar").disabled =
       false;
-
 
     if (
       !document.hidden &&
@@ -402,7 +401,7 @@ async function fetchHistoryBatch(
 
   const r =
     await fetch(
-      `/api/pasos/tunel-01/historial?${p}`,
+      `/api/pasos/${encodeURIComponent(currentTunnel)}/historial?${p}`,
       {
         cache: "no-store"
       }
@@ -1324,8 +1323,11 @@ function renderCodeBars(
 
 
   if (!total) {
-    c.innerHTML =
-      '<p class="muted">Sin datos en este rango.</p>';
+    c.textContent = "";
+    const p = document.createElement("p");
+    p.className = "muted";
+    p.textContent = "Sin datos en este rango.";
+    c.appendChild(p);
 
     return;
   }
@@ -1592,8 +1594,11 @@ function renderActivity(events) {
       ms;
 
   } else {
-    box.innerHTML =
-      '<p class="muted">No hay datos en este rango.</p>';
+    box.textContent = "";
+    const p = document.createElement("p");
+    p.className = "muted";
+    p.textContent = "No hay datos en este rango.";
+    box.appendChild(p);
 
     return;
   }
@@ -1969,8 +1974,11 @@ function renderObstruction(events) {
 
 
   if (pts.length < 2) {
-    box.innerHTML =
-      '<p class="muted">No hay suficientes mediciones en este rango para graficar.</p>';
+    box.textContent = "";
+    const p = document.createElement("p");
+    p.className = "muted";
+    p.textContent = "No hay suficientes mediciones en este rango para graficar.";
+    box.appendChild(p);
 
     return;
   }
@@ -1989,8 +1997,11 @@ function renderObstruction(events) {
 
 
   if (!values.length) {
-    box.innerHTML =
-      '<p class="muted">No hay mediciones válidas en este rango.</p>';
+    box.textContent = "";
+    const p = document.createElement("p");
+    p.className = "muted";
+    p.textContent = "No hay mediciones válidas en este rango.";
+    box.appendChild(p);
 
     return;
   }
@@ -2514,18 +2525,14 @@ function switchView(view) {
     return;
   }
 
-
   activeView =
     view;
-
 
   $("vista-monitor").hidden =
     view !== "monitor";
 
-
   $("vista-historial").hidden =
     view !== "historial";
-
 
   $("vista-estadisticas").hidden =
     view !== "estadisticas";
@@ -2831,4 +2838,236 @@ setInterval(
 );
 
 
-refresh();
+/* =========================================================
+   GESTIÓN MULTI-TÚNEL
+   ========================================================= */
+
+async function cargarTuneles() {
+  try {
+    const res = await fetch("/api/tuneles");
+    if (res.status === 401) {
+      location.assign("/login");
+      return;
+    }
+    if (!res.ok) throw new Error("Error cargando túneles");
+    const data = await res.json();
+    tunnelsList = data.tuneles || [];
+
+    if (!tunnelsList.some(t => t.paso_id === currentTunnel) && tunnelsList.length > 0) {
+      currentTunnel = tunnelsList[0].paso_id;
+    }
+
+    renderTunelesPills();
+    actualizarHeaderTunel();
+  } catch (err) {
+    console.error("Error al obtener túneles:", err);
+  }
+}
+
+function actualizarHeaderTunel() {
+  const tunel = tunnelsList.find(t => t.paso_id === currentTunnel);
+  const headerSub = $("header-tunnel-subtitle");
+  if (headerSub && tunel) {
+    headerSub.textContent = `${tunel.nombre} · ${tunel.dispositivo_id.toUpperCase()} · Telemetría en vivo`;
+  }
+}
+
+function renderTunelesPills() {
+  const container = $("tuneles-pills");
+  if (!container) return;
+  while (container.firstChild) {
+    container.removeChild(container.firstChild);
+  }
+
+  tunnelsList.forEach(t => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "tunel-pill" + (t.paso_id === currentTunnel ? " active" : "");
+    btn.textContent = "🚇 " + t.nombre;
+    btn.addEventListener("click", () => {
+      cambiarTunel(t.paso_id);
+    });
+    container.appendChild(btn);
+  });
+}
+
+function cambiarTunel(pasoId) {
+  currentTunnel = pasoId;
+
+  // Cancelar peticiones previas en vuelo
+  if (monitorAbortController) {
+    monitorAbortController.abort();
+    monitorAbortController = null;
+  }
+  running = false;
+  clearTimeout(timer);
+
+  historyEvents = [];
+  historyPage = 1;
+  historyTotal = 0;
+  statsEvents = null;
+
+  renderTunelesPills();
+  actualizarHeaderTunel();
+
+  const tunel = tunnelsList.find(t => t.paso_id === currentTunnel);
+  const nombreTunel = tunel ? tunel.nombre : pasoId;
+
+  if (activeView === "monitor") {
+    // Limpiar estado inmediatamente para evitar visualización previa
+    $("diagnostico").textContent = `Consultando ${nombreTunel}…`;
+    $("vigencia").textContent = "Cargando estado en vivo…";
+    $("codigo").textContent = "…";
+    $("estado").className = "card estado neutral";
+    $("carril1").textContent = "—";
+    $("valido1").textContent = "Consultando";
+    $("carril2").textContent = "—";
+    $("valido2").textContent = "Consultando";
+    $("agua").textContent = "—";
+
+    refresh();
+  } else if (activeView === "historial") {
+    loadHistory();
+  } else if (activeView === "estadisticas") {
+    loadStats();
+  }
+}
+
+/* Modal y Creación de Túneles */
+function abrirModalNuevoTunel() {
+  const modal = $("modal-nuevo-tunel");
+  if (!modal) return;
+
+  $("form-crear-tunel").reset();
+  $("modal-nuevo-tunel-cuerpo").style.display = "block";
+  $("modal-nuevo-tunel-resultado").style.display = "none";
+  const errEl = $("modal-nuevo-tunel-error");
+  if (errEl) {
+    errEl.textContent = "";
+    errEl.style.display = "none";
+  }
+
+  if (typeof modal.showModal === "function") {
+    modal.showModal();
+  } else {
+    modal.setAttribute("open", "");
+  }
+  $("nuevo-tunel-nombre").focus();
+}
+
+function cerrarModalNuevoTunel() {
+  const modal = $("modal-nuevo-tunel");
+  if (!modal) return;
+  if (typeof modal.close === "function") {
+    modal.close();
+  } else {
+    modal.removeAttribute("open");
+  }
+}
+
+async function crearNuevoTunel(nombre, pasoId, dispId) {
+  const errEl = $("modal-nuevo-tunel-error");
+  if (errEl) {
+    errEl.textContent = "";
+    errEl.style.display = "none";
+  }
+  const submitBtn = $("btn-submit-crear-tunel");
+  if (submitBtn) submitBtn.disabled = true;
+
+  try {
+    const res = await fetch("/api/tuneles", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre: nombre, paso_id: pasoId, dispositivo_id: dispId })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      if (errEl) {
+        errEl.textContent = data.detalle || data.error || "Error al crear el túnel";
+        errEl.style.display = "block";
+      }
+      return;
+    }
+
+    // Éxito: mostrar la clave generada
+    $("modal-nuevo-tunel-cuerpo").style.display = "none";
+    $("nuevo-tunel-key-val").textContent = data.api_key;
+    $("modal-nuevo-tunel-resultado").style.display = "block";
+
+    const finBtn = $("btn-finalizar-crear-tunel");
+    finBtn.onclick = async () => {
+      cerrarModalNuevoTunel();
+      await cargarTuneles();
+      cambiarTunel(data.paso_id);
+    };
+
+    await cargarTuneles();
+
+  } catch (err) {
+    if (errEl) {
+      errEl.textContent = "Error de red al crear el túnel.";
+      errEl.style.display = "block";
+    }
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
+  }
+}
+
+function initMultiTunelListeners() {
+  const btnTop = $("btn-nuevo-tunel-top");
+  if (btnTop) {
+    btnTop.addEventListener("click", abrirModalNuevoTunel);
+  }
+
+  const btnCerrar = $("btn-cerrar-modal-tunel");
+  if (btnCerrar) {
+    btnCerrar.addEventListener("click", cerrarModalNuevoTunel);
+  }
+
+  const btnCancel = $("btn-cancelar-modal-tunel");
+  if (btnCancel) {
+    btnCancel.addEventListener("click", cerrarModalNuevoTunel);
+  }
+
+  const formTunel = $("form-crear-tunel");
+  if (formTunel) {
+    formTunel.addEventListener("submit", e => {
+      e.preventDefault();
+      const nombre = $("nuevo-tunel-nombre").value;
+      const pasoId = $("nuevo-tunel-paso-id").value;
+      const dispId = $("nuevo-tunel-dispositivo-id").value;
+      crearNuevoTunel(nombre, pasoId, dispId);
+    });
+  }
+
+  // Sugerencia automática de slugs
+  const inputNombre = $("nuevo-tunel-nombre");
+  if (inputNombre) {
+    inputNombre.addEventListener("input", () => {
+      const slug = inputNombre.value
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+      const num = slug.replace(/[^0-9]/g, "");
+      $("nuevo-tunel-paso-id").placeholder = slug || "tunel-03";
+      $("nuevo-tunel-dispositivo-id").placeholder = num ? `esp32-${num}` : "esp32-03";
+    });
+  }
+
+  const btnCopiarKey = $("btn-copiar-nueva-key");
+  if (btnCopiarKey) {
+    btnCopiarKey.addEventListener("click", () => {
+      const keyVal = $("nuevo-tunel-key-val").textContent;
+      if (!keyVal) return;
+      navigator.clipboard.writeText(keyVal).then(() => {
+        btnCopiarKey.textContent = "¡Copiada!";
+        setTimeout(() => { btnCopiarKey.textContent = "Copiar"; }, 2000);
+      });
+    });
+  }
+}
+
+initMultiTunelListeners();
+cargarTuneles().then(() => refresh());
+
+

@@ -30,8 +30,8 @@
 
       <h1>Monitoreo del túnel</h1>
 
-      <p class="muted">
-        Túnel 01 · ESP32 · Telemetría de simulación
+      <p class="muted" id="header-tunnel-subtitle">
+        Túnel 01 · ESP32 · Telemetría en vivo
       </p>
     </div>
 
@@ -49,6 +49,27 @@
     </form>
     {% endif %}
   </header>
+
+
+  <!-- =====================================================
+       SELECTOR DE PASO A NIVEL (TÚNEL)
+       ===================================================== -->
+
+  <div class="tunel-selector-bar card">
+    <div class="tunel-selector-content">
+      <div>
+        <p class="eyebrow">PASO A NIVEL SELECCIONADO</p>
+        <div id="tuneles-pills" class="range-selector" role="group" aria-label="Seleccionar túnel activo" style="margin-top:6px;">
+          <!-- Cargado dinámicamente por JavaScript -->
+        </div>
+      </div>
+      <div>
+        <button id="btn-nuevo-tunel-top" class="secondary" type="button" style="white-space:nowrap;">
+          + Nuevo Túnel
+        </button>
+      </div>
+    </div>
+  </div>
 
 
   <!-- =====================================================
@@ -831,6 +852,66 @@
     </section>
 
   </div>
+
+
+  <!-- =====================================================
+       MODAL: AGREGAR NUEVO PASO A NIVEL
+       ===================================================== -->
+
+  <dialog id="modal-nuevo-tunel" class="modal-card">
+
+    <div class="section-head" style="margin-bottom:16px;">
+      <h3 style="margin:0;">Agregar nuevo paso a nivel</h3>
+      <button id="btn-cerrar-modal-tunel" type="button" class="secondary" style="padding:4px 8px; font-size:14px; cursor:pointer;" aria-label="Cerrar">✕</button>
+    </div>
+
+    <div id="modal-nuevo-tunel-cuerpo">
+      <p class="muted" style="margin-top:0; font-size:13px;">
+        Registrá un nuevo paso a nivel (túnel). Al crearlo se generará una clave exclusiva para su dispositivo ESP32 o Wokwi.
+      </p>
+
+      <form id="form-crear-tunel">
+        <label style="display:block; margin-bottom:12px;">
+          <span style="font-size:13px; font-weight:600;">Nombre del paso</span>
+          <input type="text" id="nuevo-tunel-nombre" placeholder="Ej: Túnel 03 / Paso San Martín" required style="width:100%; margin-top:6px; padding:8px 12px; background:#0e1720; border:1px solid #354551; color:#fff; border-radius:6px;">
+        </label>
+
+        <label style="display:block; margin-bottom:12px;">
+          <span style="font-size:13px; font-weight:600;">ID del paso (opcional)</span>
+          <input type="text" id="nuevo-tunel-paso-id" placeholder="Ej: tunel-03" style="width:100%; margin-top:6px; padding:8px 12px; background:#0e1720; border:1px solid #354551; color:#fff; border-radius:6px;">
+        </label>
+
+        <label style="display:block; margin-bottom:12px;">
+          <span style="font-size:13px; font-weight:600;">ID Dispositivo ESP32 (opcional)</span>
+          <input type="text" id="nuevo-tunel-dispositivo-id" placeholder="Ej: esp32-03" style="width:100%; margin-top:6px; padding:8px 12px; background:#0e1720; border:1px solid #354551; color:#fff; border-radius:6px;">
+        </label>
+
+        <p id="modal-nuevo-tunel-error" class="error" style="display:none; color:#f87171; font-size:13px; margin:8px 0;"></p>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
+          <button id="btn-cancelar-modal-tunel" type="button" class="secondary">Cancelar</button>
+          <button type="submit" id="btn-submit-crear-tunel">Crear Paso a Nivel</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="modal-nuevo-tunel-resultado" style="display:none; margin-top:10px;">
+      <p style="color:#34d399; font-weight:bold; font-size:15px; margin:0 0 8px;">✓ ¡Paso a nivel creado con éxito!</p>
+      <p class="muted" style="font-size:13px; line-height:1.4; margin-bottom:12px;">
+        Copiá y guardá esta <strong>API Device Key</strong> para el firmware del ESP32 o Wokwi. Por seguridad hacia los usuarios del panel, <strong>no se volverá a mostrar públicamente</strong>.
+      </p>
+
+      <div class="key-box" style="margin:12px 0;">
+        <code id="nuevo-tunel-key-val" style="word-break:break-all;"></code>
+        <button type="button" class="secondary btn-copy" id="btn-copiar-nueva-key">Copiar</button>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; margin-top:18px;">
+        <button type="button" id="btn-finalizar-crear-tunel">Listo, ver túnel</button>
+      </div>
+    </div>
+
+  </dialog>
 
 
   <footer>

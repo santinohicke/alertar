@@ -1,0 +1,55 @@
+# Sistema operativo y editores
+.DS_Store
+Thumbs.db
+**/.vscode/
+**/.idea/
+
+# Entornos, caches y resultados de compilacion
+**/.venv/
+**/venv/
+**/__pycache__/
+**/.pytest_cache/
+**/.test-tmp/
+**/.pio/
+**/build/
+*.py[cod]
+*.bin
+*.elf
+*.map
+*.sqlite3-wal
+*.sqlite3-shm
+*.sqlite3-journal
+*.db-wal
+*.db-shm
+*.db-journal
+*.log
+*.ndjson
+
+# Secretos y configuracion local
+**/.env
+**/.env.*
+!**/.env.example
+**/*secrets*.h
+!**/*secrets.example.h
+**/*secret*.json
+**/*credentials*.json
+**/*.pem
+**/*.key
+**/*.p12
+**/secrets/
+
+# Datos, respaldos y paquetes que pueden incluir secretos compilados
+**/instance/
+*.sqlite
+*.sqlite3
+*.db
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+backups/
+/AlertAR-2 2/
+
+# Evidencia y notas operativas locales (hosts, rutas, IP y diagnosticos)
+verificaciones/
+handoff.md

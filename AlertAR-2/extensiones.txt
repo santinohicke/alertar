@@ -1,0 +1,3 @@
+Para simular en visual studio code instalar:
+Wokwi Simulator extension 
+PlatformIO IDE extension

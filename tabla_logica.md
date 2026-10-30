@@ -27,4 +27,4 @@ Se conservan los nueve códigos existentes, sin agregar filas. Se aplica la prim
 
 ## Archivos
 
-La misma implementación está en `AlertAR-2/src/main.cpp` + `logica.h` (PlatformIO) y `AlertAR/sketch.ino` + `logica.h` (Arduino/Wokwi). Los originales se conservan en `backups/antes_correccion_logica`.
+La implementación está en `AlertAR-2/src/main.cpp` + `logica.h` (PlatformIO/Wokwi).

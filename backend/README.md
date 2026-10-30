@@ -19,6 +19,18 @@ La aplicación crea las tablas si no existen, sin borrar datos. SQLite se guarda
 
 Este modo de desarrollo no exige autenticación y solo escucha en `127.0.0.1`. Wokwi puede acceder por `http://host.wokwi.internal:5001` con una configuración local adecuada. **No publicar este modo en Internet.** En la Pi se requiere `ALERTAR_REQUIRE_AUTH=1`, clave administrativa de al menos 24 caracteres y clave de dispositivo distinta. El panel usa sesión de lectura de ocho horas, cookie `Secure`/`HttpOnly`/`SameSite=Strict` y protección CSRF.
 
+## Variables de entorno
+
+| Variable | Uso |
+| --- | --- |
+| `ALERTAR_REQUIRE_AUTH` | `1` exige autenticación (obligatorio al publicar). |
+| `ALERTAR_API_KEY` | Clave administrativa y contraseña del panel, mínimo 24 caracteres. |
+| `ALERTAR_DEVICE_KEY` | Clave inicial de `tunel-01`. Si falta, se genera una aleatoria; las demás claves se crean desde el panel. |
+| `ALERTAR_DATABASE` | Ruta de la base SQLite. |
+| `ALERTAR_ENABLE_SIMULATOR` | `1` habilita `/api/simulador/*` (solo para desarrollo; inserta eventos falsos). |
+
+Las claves de dispositivo se guardan como hash; la clave en claro solo se muestra al crearla o reemplazarla. Las escrituras de administración desde el panel exigen el encabezado `X-CSRF-Token`.
+
 ## Probar manualmente
 
 En otra terminal, desde la carpeta backend:
@@ -39,7 +51,7 @@ Todos los campos de `examples/evento.json` son obligatorios; campos adicionales 
 | Campo | Regla |
 | --- | --- |
 | `version` | Entero 1. |
-| `dispositivo_id`, `paso_id` | Configuración inicial: `esp32-01` y `tunel-01`. Un dispositivo por paso. El mapa `DISPOSITIVOS` se configura en la aplicación. |
+| `dispositivo_id`, `paso_id` | Deben existir en la tabla `tuneles` y corresponder a la clave usada. Inicialmente existe `esp32-01` / `tunel-01`; se agregan más desde el panel o `POST /api/tuneles`. Un dispositivo por paso. |
 | `evento_id` | Identidad estable del evento; nunca generar otra para un reintento. Única por dispositivo. |
 | `arranque_id` | Identidad del arranque, nueva tras cada reinicio. |
 | `secuencia` | Entero creciente por dispositivo, **persistente entre reinicios**. No se ordena por hora de llegada ni por arranque. El firmware suma la base de instalación reservada por la API a su secuencia local persistente. |

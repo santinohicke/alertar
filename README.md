@@ -69,6 +69,18 @@ Interfaz principal:
 | `GET` | `/api/pasos/{id}/estado` | Consultar el último estado conocido |
 | `GET` | `/api/pasos/{id}/historial` | Consultar eventos anteriores |
 | `GET` | `/api/panel/{id}` | Datos acotados para el panel |
+| `GET` `POST` | `/api/tuneles` | Listar pasos o crear uno nuevo con su clave de dispositivo y ubicación |
+| `PATCH` | `/api/tuneles/{id}` | Editar nombre, ubicación y coordenadas |
+| `POST` | `/api/tuneles/{id}/clave` | Reemplazar la clave de dispositivo (la anterior deja de valer) |
+| `DELETE` | `/api/tuneles/{id}` | Eliminar un paso y sus eventos (`tunel-01` no se elimina) |
+
+### Varios pasos a nivel y claves por dispositivo
+
+Cada paso tiene su propio `paso_id`, `dispositivo_id`, nombre, ubicación y coordenadas, y su propia clave de dispositivo. La clave se genera al crear el paso (botón "+ Nuevo Túnel" del panel), se muestra una sola vez y se guarda solo como hash. Una clave únicamente puede enviar datos de su paso; con otro `paso_id` o `dispositivo_id` el servidor responde 403. Si el paso tiene coordenadas, el panel muestra un enlace a su ubicación en el mapa.
+
+Para sumar un ESP32: crear el paso en el panel, copiar la clave, y en el firmware poner esa clave en `conectividad_secrets.h` y los IDs del paso en `DISPOSITIVO` y `PASO` de `src/conectividad_config.h`, y en la URL de reserva. Hay que volver a compilar antes de iniciar el simulador.
+
+`backend/simulador.py` es un simulador por línea de comandos que envía telemetría de prueba; usa la clave de la variable `ALERTAR_API_KEY` o `--key`. Los endpoints `/api/simulador/*` están deshabilitados salvo con `ALERTAR_ENABLE_SIMULATOR=1`; no activarlo en el servidor publicado.
 
 El backend en `backend/` valida el contrato JSON, autentica la ingesta, evita duplicados por identidad y secuencia, limita la frecuencia de solicitudes y separa la fecha de medición de la fecha de recepción. La API publicada requiere autenticación; la URL por sí sola no permite escribir eventos ni leer el historial.
 
@@ -90,8 +102,8 @@ El backend en `backend/` valida el contrato JSON, autentica la ingesta, evita du
    ```
 
 3. Para probar solamente sensores, LEDs y LCD, dejar `ALERTAR_CONECTIVIDAD_HABILITADA` en `false`.
-4. Para conectar una instancia autorizada del servidor, completar en el archivo local la clave de dispositivo entregada por el administrador y cambiar la opción a `true`. La plantilla contiene la URL pública de AlertAR.
-5. Ejecutar **PlatformIO: Build** y luego **Wokwi: Start Simulator** desde la paleta de comandos.
+4. Para conectar una instancia autorizada del servidor, completar en el archivo local la clave de dispositivo entregada por el administrador y cambiar la opción a `true`. La plantilla contiene la URL pública de AlertAR. La URL de reserva y los valores `DISPOSITIVO` y `PASO` de `src/conectividad_config.h` deben corresponder al paso al que pertenece la clave.
+5. Ejecutar **PlatformIO: Build** y luego **Wokwi: Start Simulator** desde la paleta de comandos. Wokwi no recompila: tras cualquier cambio en el código hay que volver a compilar.
 
 El archivo `include/conectividad_secrets.h` es local y está ignorado por Git. La plantilla pública no contiene valores utilizables.
 
@@ -115,15 +127,13 @@ AlertAR-2/
     ├── protocolo.h              contrato y confirmaciones
     └── certificado.h            autoridad certificante pública
 tests/                           pruebas nativas de lógica y protocolo
-backend/                         API Flask, panel, ejemplo y pruebas
+backend/                         API Flask, panel, simulador CLI, ejemplo y pruebas
 deploy/raspi/                    adaptador, instalación y watchdog de la Pi
 tabla_logica.md                  tabla funcional de estados
 CONECTIVIDAD.md                  transporte y límites conocidos
 IMPLEMENTACION.md                componentes y alcance
 PANEL_RASPBERRY.md               despliegue y validación pendiente
 ```
-
-La carpeta `AlertAR/` conserva la primera versión del circuito y del sketch como referencia. El desarrollo y la simulación actuales se realizan en `AlertAR-2/`.
 
 Para ejecutar la API en desarrollo local, ver [backend/README.md](backend/README.md). Ese modo no exige autenticación y debe permanecer en `127.0.0.1`. La instalación de la Pi requiere su API FastAPI anterior; ver [PANEL_RASPBERRY.md](PANEL_RASPBERRY.md).
 

@@ -629,13 +629,13 @@
       <article class="card stat-card">
         <p class="eyebrow">SITUACIÓN NORMAL</p>
         <h2 id="stat-normal">—</h2>
-        <p class="muted">Eventos con código OK-001</p>
+        <p class="muted">Tiempo con código OK-001 sobre el tiempo monitoreado</p>
       </article>
 
       <article class="card stat-card">
         <p class="eyebrow">AGUA ACTIVA</p>
         <h2 id="stat-agua">—</h2>
-        <p class="muted">Eventos detectados</p>
+        <p class="muted">Tiempo acumulado con agua detectada</p>
       </article>
 
     </section>
@@ -664,7 +664,7 @@
           </div>
 
           <div class="sensor-metric">
-            <span>Lecturas válidas</span>
+            <span>Tiempo con lectura válida</span>
             <strong id="stat-sensor1">—</strong>
           </div>
 
@@ -689,7 +689,7 @@
           </div>
 
           <div class="sensor-metric">
-            <span>Lecturas válidas</span>
+            <span>Tiempo con lectura válida</span>
             <strong id="stat-sensor2">—</strong>
           </div>
 
@@ -726,6 +726,16 @@
       <div class="communication-grid">
 
         <div class="communication-metric">
+          <span>Tiempo monitoreado</span>
+          <strong id="stat-monitoreado">—</strong>
+        </div>
+
+        <div class="communication-metric">
+          <span>Sin comunicación</span>
+          <strong id="stat-sin-comunicacion">—</strong>
+        </div>
+
+        <div class="communication-metric">
           <span>Demora promedio</span>
           <strong id="stat-delay-prom">—</strong>
         </div>
@@ -759,7 +769,7 @@
       <h2>Distribución por código</h2>
 
       <p class="muted">
-        Cantidad y proporción de cada código de diagnóstico.
+        Tiempo y proporción del rango en que estuvo cada código. Cada aviso cuenta hasta 15 s si no llega otro; después queda como sin comunicación.
       </p>
 
       <div

@@ -1316,7 +1316,7 @@ function calculateStats(events) {
 
 /* Cada evento cuenta como máximo el intervalo de muestreo (15 s) o hasta el
    evento siguiente, lo que sea menor. Pasado ese lapso sin recibir nada no se
-   suma tiempo a ningún estado: queda como "sin comunicación". */
+   suma tiempo a ningún estado. */
 const MUESTRA_S = 15;
 
 function calculateTimeStats(events) {
@@ -1326,7 +1326,7 @@ function calculateTimeStats(events) {
     .sort((a, b) => (a.t - b.t) || (Number(a.e.secuencia) - Number(b.e.secuencia)));
   const r = {
     codes: new Map(), normal: 0, water: 0,
-    valid1: 0, valid2: 0, monitored: 0, noComm: 0
+    valid1: 0, valid2: 0, monitored: 0
   };
   for (let i = 0; i < timed.length; i++) {
     const { e, t } = timed[i];
@@ -1343,12 +1343,6 @@ function calculateTimeStats(events) {
     if (e.sensor1_valido) r.valid1 += dur;
     if (e.sensor2_valido) r.valid2 += dur;
   }
-  const ms = rangeMs(statsRange);
-  const now = Date.now();
-  const start = ms !== null
-    ? now - ms
-    : (timed.length ? timed[0].t.getTime() : now);
-  r.noComm = Math.max(0, (now - start) / 1000 - r.monitored);
   return r;
 }
 
@@ -2486,22 +2480,9 @@ function renderStats() {
   $("stat-monitoreado").textContent =
     duration(t.monitored);
 
-  $("stat-sin-comunicacion").textContent =
-    duration(t.noComm);
-
-  const porCodigo =
-    new Map(t.codes);
-
-  if (t.noComm > 0) {
-    porCodigo.set(
-      "SIN COMUNICACIÓN",
-      t.noComm
-    );
-  }
-
   renderCodeBars(
-    porCodigo,
-    t.monitored + t.noComm
+    t.codes,
+    t.monitored
   );
 
 

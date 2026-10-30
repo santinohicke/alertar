@@ -89,3 +89,82 @@ class PanelTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class TunelesTests(PanelTests):
+    def crear(self, **extra):
+        return self.client.post("/api/tuneles", headers=self.headers(),
+                                json={"nombre": "Paso Norte", "ubicacion": "Km 12",
+                                      "latitud": -34.6, "longitud": -58.38, **extra})
+
+    def evento(self, paso, dispositivo, **cambios):
+        return {**self.event, "paso_id": paso, "dispositivo_id": dispositivo,
+                "evento_id": "e-" + dispositivo, **cambios}
+
+    def test_key_bound_to_location_and_tunnel(self):
+        r = self.crear()
+        self.assertEqual(r.status_code, 201)
+        datos = r.json
+        self.assertEqual((datos["latitud"], datos["ubicacion"]), (-34.6, "Km 12"))
+        key = {"X-API-Key": datos["api_key"]}
+        ok = self.client.post("/api/eventos", headers=key, json=self.evento(datos["paso_id"], datos["dispositivo_id"]))
+        self.assertEqual(ok.status_code, 201)
+        ajeno = self.client.post("/api/eventos", headers=key, json=self.evento("tunel-01", "esp32-01"))
+        self.assertEqual(ajeno.status_code, 403)
+
+    def test_keys_stored_hashed_and_never_listed(self):
+        clave = self.crear().json["api_key"]
+        import sqlite3
+        with sqlite3.connect(self.config["DATABASE"]) as con:
+            guardadas = [f[0] for f in con.execute("SELECT api_key FROM tuneles")]
+        self.assertTrue(all(g.startswith("sha256:") for g in guardadas))
+        self.assertNotIn(clave, guardadas)
+        listado = self.client.get("/api/tuneles", headers=self.headers())
+        self.assertNotIn(clave, listado.text)
+        self.assertNotIn("api_key", listado.json["tuneles"][0])
+
+    def test_rotate_key_invalidates_old(self):
+        d = self.crear().json
+        nueva = self.client.post(f"/api/tuneles/{d['paso_id']}/clave", headers=self.headers()).json["api_key"]
+        ev = self.evento(d["paso_id"], d["dispositivo_id"])
+        self.assertEqual(self.client.post("/api/eventos", headers={"X-API-Key": d["api_key"]}, json=ev).status_code, 401)
+        self.assertEqual(self.client.post("/api/eventos", headers={"X-API-Key": nueva}, json=ev).status_code, 201)
+
+    def test_edit_location_and_validation(self):
+        d = self.crear().json
+        r = self.client.patch(f"/api/tuneles/{d['paso_id']}", headers=self.headers(),
+                              json={"latitud": -31.4, "longitud": -64.2, "ubicacion": "Córdoba"})
+        self.assertEqual((r.status_code, r.json["longitud"]), (200, -64.2))
+        for malo in ({"latitud": 91, "longitud": 0}, {"latitud": 1, "longitud": None}, {"latitud": "x", "longitud": 1}):
+            self.assertEqual(self.crear(**malo).status_code, 400)
+
+    def test_delete_removes_events_and_protects_base(self):
+        d = self.crear().json
+        self.client.post("/api/eventos", headers={"X-API-Key": d["api_key"]},
+                         json=self.evento(d["paso_id"], d["dispositivo_id"]))
+        self.assertEqual(self.client.delete("/api/tuneles/tunel-01", headers=self.headers()).status_code, 400)
+        self.assertEqual(self.client.delete(f"/api/tuneles/{d['paso_id']}", headers=self.headers()).status_code, 200)
+        import sqlite3
+        with sqlite3.connect(self.config["DATABASE"]) as con:
+            self.assertEqual(con.execute("SELECT COUNT(*) FROM eventos WHERE paso_id=?", (d["paso_id"],)).fetchone()[0], 0)
+
+    def test_device_key_cannot_admin_and_session_needs_csrf(self):
+        self.assertEqual(self.client.post("/api/tuneles", headers=self.headers(device=True), json={"nombre": "x"}).status_code, 401)
+        self.login()
+        self.assertEqual(self.client.post("/api/tuneles", json={"nombre": "x"}).status_code, 403)
+        token = re.search(r'name="csrf"\s+value="([^"]+)"', self.client.get("/").text).group(1)
+        r = self.client.post("/api/tuneles", headers={"X-CSRF-Token": token}, json={"nombre": "x"})
+        self.assertEqual(r.status_code, 201)
+
+    def test_simulator_disabled_by_default(self):
+        r = self.client.post("/api/simulador/evento", headers=self.headers(), json={"tipo": "agua"})
+        self.assertEqual(r.status_code, 404)
+        app = create_app({**self.config, "DATABASE": self.config["DATABASE"] + "2", "ENABLE_SIMULATOR": True})
+        r = app.test_client().post("/api/simulador/evento", headers=self.headers(), json={"tipo": "agua"})
+        self.assertEqual(r.status_code, 201)
+
+    def test_no_default_device_key(self):
+        import sqlite3
+        with sqlite3.connect(self.config["DATABASE"]) as con:
+            fila = con.execute("SELECT api_key FROM tuneles").fetchone()[0]
+        self.assertTrue(fila.startswith("sha256:"))
+

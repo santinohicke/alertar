@@ -1,7 +1,9 @@
 """API local de AlertAR. Ejecutar desde backend con flask --app app run."""
 
+import hashlib
 import json
 import math
+import secrets
 import os
 import re
 import sqlite3
@@ -20,6 +22,11 @@ FIELDS = {
     "obstruccion_carril1_cm", "obstruccion_carril2_cm", "sensor1_valido",
     "sensor2_valido", "agua_activa", "agua_pendiente",
 }
+
+
+def hash_clave(clave):
+    """Las claves de dispositivo se guardan solo como hash; la clave en claro se muestra una vez."""
+    return "sha256:" + hashlib.sha256(clave.encode()).hexdigest()
 
 
 def utcnow():
@@ -91,6 +98,7 @@ def create_app(config=None):
         API_KEY=os.environ.get("ALERTAR_API_KEY", ""),
         DEVICE_KEY=os.environ.get("ALERTAR_DEVICE_KEY", ""),
         RATE_LIMIT_ENABLED=True,
+        ENABLE_SIMULATOR=os.environ.get("ALERTAR_ENABLE_SIMULATOR", "0") == "1",
         SESSION_COOKIE_SECURE=os.environ.get("ALERTAR_REQUIRE_AUTH", "0") == "1",
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Strict",
@@ -130,15 +138,28 @@ def create_app(config=None):
                 nombre TEXT NOT NULL,
                 dispositivo_id TEXT NOT NULL UNIQUE,
                 api_key TEXT NOT NULL UNIQUE,
-                creado_en TEXT NOT NULL
+                creado_en TEXT NOT NULL,
+                ubicacion TEXT,
+                latitud REAL,
+                longitud REAL
             );
         """)
+        columnas = {r["name"] for r in connection.execute("PRAGMA table_info(tuneles)")}
+        for nombre, tipo in (("ubicacion", "TEXT"), ("latitud", "REAL"), ("longitud", "REAL")):
+            if nombre not in columnas:
+                connection.execute(f"ALTER TABLE tuneles ADD COLUMN {nombre} {tipo}")
+        # Migra claves guardadas en claro por versiones anteriores.
+        for fila in connection.execute("SELECT paso_id, api_key FROM tuneles").fetchall():
+            if not fila["api_key"].startswith("sha256:"):
+                connection.execute("UPDATE tuneles SET api_key=? WHERE paso_id=?",
+                                   (hash_clave(fila["api_key"]), fila["paso_id"]))
         tunel = connection.execute("SELECT paso_id FROM tuneles WHERE paso_id='tunel-01'").fetchone()
         if not tunel:
-            default_dev_key = app.config.get("DEVICE_KEY") or "DU7KynU5EeUltr3BZn2eVWB9izZk0JBg"
+            # Sin clave configurada se genera una aleatoria que nadie conoce; no hay claves por defecto.
+            clave = app.config.get("DEVICE_KEY") or secrets.token_urlsafe(32)
             connection.execute(
                 "INSERT INTO tuneles (paso_id, nombre, dispositivo_id, api_key, creado_en) VALUES (?, ?, ?, ?, ?)",
-                ("tunel-01", "Túnel 01", "esp32-01", default_dev_key, utcnow().isoformat())
+                ("tunel-01", "Túnel 01", "esp32-01", hash_clave(clave), utcnow().isoformat())
             )
         connection.commit()
         g.pop("db").close()
@@ -279,5 +300,6 @@ def create_app(config=None):
         from .panel import registrar_panel
     else:
         from panel import registrar_panel
+    app.extensions["alertar_hash"] = hash_clave
     registrar_panel(app, db, state, record)
     return app

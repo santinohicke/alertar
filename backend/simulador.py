@@ -6,6 +6,7 @@ de sensores de agua, obstrucción y diagnóstico al backend.
 """
 import argparse
 import json
+import os
 import random
 import sys
 import time
@@ -13,7 +14,6 @@ import urllib.request
 import urllib.error
 from datetime import datetime, timezone
 
-DEFAULT_MASTER_KEY = "LdoRaJnIdeK51hZDjeTOV2OvTyDcXC6rcihQQ4NUSB4"
 DEFAULT_URL = "http://127.0.0.1:5001"
 
 ESCENARIOS = {
@@ -146,11 +146,11 @@ class TunelSimulado:
         status, res = http_request(url, method="POST", data=payload, headers={"X-API-Key": self.api_key})
 
         simbolo = {
-            "OK-001": "🟢",
-            "INF-001": "🟡",
-            "ERR-001": "🔴",
-            "ERR-002": "⚠️"
-        }.get(cfg["codigo"], "⚪")
+            "OK-001": "[OK]",
+            "INF-001": "[INF]",
+            "ERR-001": "[ERR]",
+            "ERR-002": "[ERR]"
+        }.get(cfg["codigo"], "[?]")
 
         if status in (200, 201):
             print(f"[{datetime.now().strftime('%H:%M:%S')}] {simbolo} [{self.paso_id}] {cfg['codigo']} Sec #{self.secuencia}: {diagnostico}")
@@ -163,7 +163,7 @@ class TunelSimulado:
 def main():
     parser = argparse.ArgumentParser(description="Simulador CLI de Telemetría ESP32 / AlertAR")
     parser.add_argument("--url", default=DEFAULT_URL, help=f"URL base del backend (def: {DEFAULT_URL})")
-    parser.add_argument("--key", default=DEFAULT_MASTER_KEY, help="Master API Key o Device Key")
+    parser.add_argument("--key", default=os.environ.get("ALERTAR_API_KEY", ""), help="Master API Key o Device Key (o variable ALERTAR_API_KEY)")
     parser.add_argument("--tunel", default=None, help="ID del paso específico (ej: tunel-01). Por defecto: todos los túneles.")
     parser.add_argument("--tipo", choices=["normal", "obstruccion", "agua", "falla", "aleatorio"], default="normal",
                         help="Escenario a simular (def: normal)")
@@ -174,10 +174,12 @@ def main():
     base_url = args.url.rstrip("/")
 
     print("=" * 60)
-    print("  🚨 AlertAR - Simulador CLI de Telemetría ESP32 / Sensores")
+    print("  AlertAR - Simulador CLI de Telemetría ESP32 / Sensores")
     print(f"  Target: {base_url}")
     print("=" * 60)
 
+    if not args.key:
+        raise SystemExit("Falta la clave: usar --key o la variable ALERTAR_API_KEY.")
     tuneles_data = obtener_tuneles(base_url, args.key)
     if not tuneles_data:
         print("[!] No se encontraron túneles o no hay autorización.")
@@ -230,7 +232,7 @@ def main():
             if i < args.veces - 1:
                 time.sleep(1)
 
-    print("\n[✓] Telemetría enviada con éxito.")
+    print("\n[OK] Telemetría enviada con éxito.")
 
 
 if __name__ == "__main__":

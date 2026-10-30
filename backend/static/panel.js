@@ -2868,7 +2868,16 @@ function actualizarHeaderTunel() {
   const tunel = tunnelsList.find(t => t.paso_id === currentTunnel);
   const headerSub = $("header-tunnel-subtitle");
   if (headerSub && tunel) {
-    headerSub.textContent = `${tunel.nombre} · ${tunel.dispositivo_id.toUpperCase()} · Telemetría en vivo`;
+    const lugar = tunel.ubicacion ? ` · ${tunel.ubicacion}` : "";
+    headerSub.textContent = `${tunel.nombre} · ${tunel.dispositivo_id.toUpperCase()}${lugar} · Telemetría en vivo`;
+  }
+  const mapa = $("header-tunnel-map");
+  if (mapa) {
+    const conCoords = tunel && tunel.latitud !== null && tunel.longitud !== null;
+    mapa.hidden = !conCoords;
+    if (conCoords) {
+      mapa.href = `https://www.openstreetmap.org/?mlat=${tunel.latitud}&mlon=${tunel.longitud}#map=17/${tunel.latitud}/${tunel.longitud}`;
+    }
   }
 }
 
@@ -2883,7 +2892,7 @@ function renderTunelesPills() {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "tunel-pill" + (t.paso_id === currentTunnel ? " active" : "");
-    btn.textContent = "🚇 " + t.nombre;
+    btn.textContent = t.nombre;
     btn.addEventListener("click", () => {
       cambiarTunel(t.paso_id);
     });
@@ -2965,7 +2974,12 @@ function cerrarModalNuevoTunel() {
   }
 }
 
-async function crearNuevoTunel(nombre, pasoId, dispId) {
+function csrfToken() {
+  const campo = document.querySelector('input[name="csrf"]');
+  return campo ? campo.value : "";
+}
+
+async function crearNuevoTunel(nombre, pasoId, dispId, ubicacion, latitud, longitud) {
   const errEl = $("modal-nuevo-tunel-error");
   if (errEl) {
     errEl.textContent = "";
@@ -2977,8 +2991,13 @@ async function crearNuevoTunel(nombre, pasoId, dispId) {
   try {
     const res = await fetch("/api/tuneles", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nombre: nombre, paso_id: pasoId, dispositivo_id: dispId })
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken() },
+      body: JSON.stringify({
+        nombre: nombre, paso_id: pasoId, dispositivo_id: dispId,
+        ubicacion: ubicacion,
+        latitud: latitud === "" ? null : latitud,
+        longitud: longitud === "" ? null : longitud
+      })
     });
     const data = await res.json();
     if (!res.ok) {
@@ -3036,7 +3055,8 @@ function initMultiTunelListeners() {
       const nombre = $("nuevo-tunel-nombre").value;
       const pasoId = $("nuevo-tunel-paso-id").value;
       const dispId = $("nuevo-tunel-dispositivo-id").value;
-      crearNuevoTunel(nombre, pasoId, dispId);
+      crearNuevoTunel(nombre, pasoId, dispId,
+        $("nuevo-tunel-ubicacion").value, $("nuevo-tunel-latitud").value, $("nuevo-tunel-longitud").value);
     });
   }
 

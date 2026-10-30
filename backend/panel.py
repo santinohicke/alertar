@@ -12,6 +12,27 @@ from datetime import datetime, timezone
 from flask import g, jsonify, redirect, render_template, request, session, url_for
 
 
+RUTAS_ADMIN = ("crear_tunel", "editar_tunel", "rotar_clave_tunel", "eliminar_tunel",
+               "simular_evento", "simular_todos")
+
+
+def leer_ubicacion(body):
+    """Devuelve (ubicacion, latitud, longitud) validados o lanza ValueError."""
+    ubicacion = body.get("ubicacion")
+    if ubicacion is not None:
+        ubicacion = str(ubicacion).strip()[:120] or None
+    lat, lon = body.get("latitud"), body.get("longitud")
+    if lat is None and lon is None:
+        return ubicacion, None, None
+    try:
+        lat, lon = float(lat), float(lon)
+    except (TypeError, ValueError):
+        raise ValueError("latitud y longitud deben ser números.") from None
+    if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+        raise ValueError("Coordenadas fuera de rango.")
+    return ubicacion, lat, lon
+
+
 class Cubo:
     """Token bucket de tamaño constante, compartido por hilos del único proceso."""
     def __init__(self, ritmo, capacidad, reloj=time.monotonic):
@@ -38,7 +59,7 @@ def registrar_panel(app, db, estado, record):
         raise RuntimeError("Configurar ALERTAR_API_KEY (mínimo 24 caracteres) antes de publicar.")
     app.secret_key = hashlib.sha256(("alertar-panel-session:" + master).encode()).digest() if master else secrets.token_bytes(32)
     # Sin diccionarios por IP que crezcan indefinidamente. Límites globales por proceso.
-    cubos = {"ingesta": Cubo(2, 4), "lectura": Cubo(4, 8), "login": Cubo(0.1, 5)}
+    cubos = {"ingesta": Cubo(2, 4), "lectura": Cubo(4, 8), "login": Cubo(0.1, 5), "admin": Cubo(0.5, 6)}
     activos = threading.BoundedSemaphore(4)
     app.extensions["alertar_cubos"] = cubos
 
@@ -66,17 +87,12 @@ def registrar_panel(app, db, estado, record):
             key = request.headers.get("X-API-Key", "")
             es_master = igual(key, master)
 
+            hash_clave = app.extensions["alertar_hash"]
             tunel_auth = None
-            if key:
-                try:
-                    tunel_auth = db().execute("SELECT * FROM tuneles WHERE api_key = ?", (key,)).fetchone()
-                except Exception:
-                    tunel_auth = None
+            if key and not es_master:
+                tunel_auth = db().execute("SELECT * FROM tuneles WHERE api_key = ?", (hash_clave(key),)).fetchone()
                 if not tunel_auth and device and igual(key, device):
-                    try:
-                        tunel_auth = db().execute("SELECT * FROM tuneles WHERE paso_id = 'tunel-01'").fetchone()
-                    except Exception:
-                        pass
+                    tunel_auth = db().execute("SELECT * FROM tuneles WHERE paso_id = 'tunel-01'").fetchone()
 
             ruta_ingesta = request.endpoint in ("receive", "reserve")
             if es_master:
@@ -86,13 +102,16 @@ def registrar_panel(app, db, estado, record):
                 g.auth_device_id = tunel_auth["dispositivo_id"]
             elif not escritura and session.get("lector"):
                 pass
-            elif escritura and session.get("lector") and request.endpoint in (
-                    "crear_tunel", "eliminar_tunel", "simular_evento", "simular_todos"):
-                pass
+            elif escritura and session.get("lector") and request.endpoint in RUTAS_ADMIN:
+                # Escrituras con cookie de sesión exigen token CSRF; con la clave principal no hace falta.
+                if not igual(request.headers.get("X-CSRF-Token", ""), session.get("csrf", "")):
+                    return jsonify(error="csrf_invalido"), 403
             else:
                 return jsonify(error="no_autorizado"), 401
         if request.endpoint == "login" and request.method == "POST":
             tipo = "login"
+        elif api and request.endpoint in RUTAS_ADMIN:
+            tipo = "admin"  # no compite con la ingesta de los dispositivos
         elif api:
             tipo = "ingesta" if escritura else "lectura"
         else:
@@ -166,105 +185,141 @@ def registrar_panel(app, db, estado, record):
         return jsonify(estado=snapshot, eventos=[record(row) for row in rows], intervalo_s=15,
                        vigencia_s=app.config["STALE_SECONDS"])
 
+    def autorizado_admin():
+        return not required or getattr(g, "es_master", False) or bool(session.get("lector"))
+
+    def publico(r, ultimo=None):
+        return {
+            "paso_id": r["paso_id"], "nombre": r["nombre"], "dispositivo_id": r["dispositivo_id"],
+            "creado_en": r["creado_en"], "ubicacion": r["ubicacion"],
+            "latitud": r["latitud"], "longitud": r["longitud"],
+        }
+
     @app.get("/api/tuneles")
     def listar_tuneles():
-        if required and not session.get("lector") and not getattr(g, "es_master", False):
+        if not autorizado_admin():
             return jsonify(error="no_autorizado"), 401
-        rows = db().execute("SELECT * FROM tuneles ORDER BY paso_id ASC").fetchall()
+        rows = db().execute("""
+            SELECT t.*, COUNT(e.id) AS total_eventos, MAX(e.recibido_en) AS ultima_recepcion,
+                   (SELECT payload FROM eventos WHERE paso_id = t.paso_id
+                    ORDER BY secuencia DESC LIMIT 1) AS ultimo_payload
+            FROM tuneles t LEFT JOIN eventos e ON e.paso_id = t.paso_id
+            GROUP BY t.paso_id ORDER BY t.paso_id ASC""").fetchall()
         resultado = []
         for r in rows:
-            last_ev = db().execute(
-                "SELECT * FROM eventos WHERE paso_id = ? ORDER BY secuencia DESC LIMIT 1",
-                (r["paso_id"],)
-            ).fetchone()
-            last_rec = db().execute(
-                "SELECT MAX(recibido_en) FROM eventos WHERE paso_id = ?",
-                (r["paso_id"],)
-            ).fetchone()[0]
-            ultimo_codigo = "SIN_DATOS"
-            if last_ev:
+            codigo = "SIN_DATOS"
+            if r["ultimo_payload"]:
                 try:
-                    ultimo_codigo = json.loads(last_ev["payload"]).get("codigo", "SIN_DATOS")
-                except Exception:
+                    codigo = json.loads(r["ultimo_payload"]).get("codigo", "SIN_DATOS")
+                except ValueError:
                     pass
-            total_eventos = db().execute(
-                "SELECT COUNT(*) FROM eventos WHERE paso_id = ?",
-                (r["paso_id"],)
-            ).fetchone()[0]
-            item = {
-                "paso_id": r["paso_id"],
-                "nombre": r["nombre"],
-                "dispositivo_id": r["dispositivo_id"],
-                "creado_en": r["creado_en"],
-                "total_eventos": total_eventos,
-                "ultima_recepcion": last_rec,
-                "ultimo_codigo": ultimo_codigo
-            }
-            if getattr(g, "es_master", False):
-                item["api_key"] = r["api_key"]
-            resultado.append(item)
+            resultado.append({**publico(r), "total_eventos": r["total_eventos"],
+                              "ultima_recepcion": r["ultima_recepcion"], "ultimo_codigo": codigo})
         return jsonify(tuneles=resultado)
 
     @app.post("/api/tuneles")
     def crear_tunel():
-        if required and not session.get("lector") and not getattr(g, "es_master", False):
+        """Genera una clave de dispositivo asociada a una ubicación. La clave se muestra una sola vez."""
+        if not autorizado_admin():
             return jsonify(error="no_autorizado"), 401
-        body = request.get_json(silent=True, force=True) or {}
+        body = request.get_json(silent=True) or {}
         nombre = str(body.get("nombre", "")).strip()
         if not nombre or len(nombre) > 60:
             return jsonify(error="nombre_invalido", detalle="El nombre debe tener entre 1 y 60 caracteres."), 400
+        try:
+            ubicacion, lat, lon = leer_ubicacion(body)
+        except ValueError as error:
+            return jsonify(error="ubicacion_invalida", detalle=str(error)), 400
 
-        paso_id = str(body.get("paso_id", "")).strip().lower()
-        count = db().execute("SELECT COUNT(*) FROM tuneles").fetchone()[0]
-        if not paso_id:
-            paso_id = f"tunel-{count+1:02d}"
-        if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", paso_id):
-            return jsonify(error="paso_id_invalido", detalle="Usar 1-80 caracteres alfanuméricos, guion o guion bajo."), 400
-
-        dispositivo_id = str(body.get("dispositivo_id", "")).strip().lower()
-        if not dispositivo_id:
-            num = re.sub(r'[^0-9]', '', paso_id) or str(count+1)
-            dispositivo_id = f"esp32-{int(num):02d}"
-        if not re.fullmatch(r"[A-Za-z0-9_-]{1,80}", dispositivo_id):
-            return jsonify(error="dispositivo_id_invalido"), 400
-
-        existente = db().execute(
-            "SELECT paso_id FROM tuneles WHERE paso_id = ? OR dispositivo_id = ?",
-            (paso_id, dispositivo_id)
-        ).fetchone()
-        if existente:
-            return jsonify(error="ya_existe", detalle="El ID de túnel o dispositivo ya está en uso."), 409
-
-        nueva_key = secrets.token_urlsafe(24)
-        ahora = datetime.now(timezone.utc).isoformat()
-        with db() as conn:
+        conn = db()
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            count = conn.execute("SELECT COUNT(*) FROM tuneles").fetchone()[0]
+            paso_id = str(body.get("paso_id", "")).strip().lower() or f"tunel-{count+1:02d}"
+            if not re.fullmatch(r"[a-z0-9_-]{1,80}", paso_id):
+                conn.rollback()
+                return jsonify(error="paso_id_invalido", detalle="Usar 1-80 caracteres alfanuméricos, guion o guion bajo."), 400
+            dispositivo_id = str(body.get("dispositivo_id", "")).strip().lower()
+            if not dispositivo_id:
+                num = re.sub(r"[^0-9]", "", paso_id) or str(count + 1)
+                dispositivo_id = f"esp32-{int(num):02d}"
+            if not re.fullmatch(r"[a-z0-9_-]{1,80}", dispositivo_id):
+                conn.rollback()
+                return jsonify(error="dispositivo_id_invalido"), 400
+            if conn.execute("SELECT 1 FROM tuneles WHERE paso_id = ? OR dispositivo_id = ?",
+                            (paso_id, dispositivo_id)).fetchone():
+                conn.rollback()
+                return jsonify(error="ya_existe", detalle="El ID de túnel o dispositivo ya está en uso."), 409
+            clave = secrets.token_urlsafe(24)
+            ahora = datetime.now(timezone.utc).isoformat()
             conn.execute(
-                "INSERT INTO tuneles (paso_id, nombre, dispositivo_id, api_key, creado_en) VALUES (?, ?, ?, ?, ?)",
-                (paso_id, nombre, dispositivo_id, nueva_key, ahora)
-            )
-        return jsonify(
-            paso_id=paso_id,
-            nombre=nombre,
-            dispositivo_id=dispositivo_id,
-            api_key=nueva_key,
-            creado_en=ahora
-        ), 201
+                "INSERT INTO tuneles (paso_id, nombre, dispositivo_id, api_key, creado_en, ubicacion, latitud, longitud)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (paso_id, nombre, dispositivo_id, app.extensions["alertar_hash"](clave), ahora, ubicacion, lat, lon))
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+        return jsonify(paso_id=paso_id, nombre=nombre, dispositivo_id=dispositivo_id, api_key=clave,
+                       creado_en=ahora, ubicacion=ubicacion, latitud=lat, longitud=lon), 201
+
+    @app.patch("/api/tuneles/<paso_id>")
+    def editar_tunel(paso_id):
+        if not autorizado_admin():
+            return jsonify(error="no_autorizado"), 401
+        body = request.get_json(silent=True) or {}
+        actual = db().execute("SELECT * FROM tuneles WHERE paso_id = ?", (paso_id,)).fetchone()
+        if not actual:
+            return jsonify(error="tunel_no_encontrado"), 404
+        nombre = str(body["nombre"]).strip() if "nombre" in body else actual["nombre"]
+        if not nombre or len(nombre) > 60:
+            return jsonify(error="nombre_invalido"), 400
+        try:
+            if {"ubicacion", "latitud", "longitud"} & set(body):
+                ubicacion, lat, lon = leer_ubicacion(body)
+            else:
+                ubicacion, lat, lon = actual["ubicacion"], actual["latitud"], actual["longitud"]
+        except ValueError as error:
+            return jsonify(error="ubicacion_invalida", detalle=str(error)), 400
+        with db() as conn:
+            conn.execute("UPDATE tuneles SET nombre=?, ubicacion=?, latitud=?, longitud=? WHERE paso_id=?",
+                         (nombre, ubicacion, lat, lon, paso_id))
+        return jsonify(paso_id=paso_id, nombre=nombre, ubicacion=ubicacion, latitud=lat, longitud=lon)
+
+    @app.post("/api/tuneles/<paso_id>/clave")
+    def rotar_clave_tunel(paso_id):
+        """Reemplaza la clave del dispositivo (p. ej. si se perdió). La anterior deja de funcionar."""
+        if not autorizado_admin():
+            return jsonify(error="no_autorizado"), 401
+        clave = secrets.token_urlsafe(24)
+        with db() as conn:
+            cur = conn.execute("UPDATE tuneles SET api_key=? WHERE paso_id=?",
+                               (app.extensions["alertar_hash"](clave), paso_id))
+        if not cur.rowcount:
+            return jsonify(error="tunel_no_encontrado"), 404
+        return jsonify(paso_id=paso_id, api_key=clave)
 
     @app.delete("/api/tuneles/<paso_id>")
     def eliminar_tunel(paso_id):
-        if required and not session.get("lector") and not getattr(g, "es_master", False):
+        if not autorizado_admin():
             return jsonify(error="no_autorizado"), 401
-        total = db().execute("SELECT COUNT(*) FROM tuneles").fetchone()[0]
-        if total <= 1:
-            return jsonify(error="no_permitido", detalle="Debe haber al menos un túnel activo."), 400
+        if paso_id == "tunel-01":
+            return jsonify(error="no_permitido", detalle="tunel-01 es el túnel base y no se elimina."), 400
+        tunel = db().execute("SELECT dispositivo_id FROM tuneles WHERE paso_id = ?", (paso_id,)).fetchone()
+        if not tunel:
+            return jsonify(error="tunel_no_encontrado"), 404
         with db() as conn:
+            conn.execute("DELETE FROM eventos WHERE paso_id = ?", (paso_id,))
+            conn.execute("DELETE FROM instalaciones WHERE dispositivo_id = ?", (tunel["dispositivo_id"],))
             conn.execute("DELETE FROM tuneles WHERE paso_id = ?", (paso_id,))
         return jsonify(eliminado=True, paso_id=paso_id), 200
 
     def generar_evento_simulado(tunel, tipo="normal"):
         dispositivo_id = tunel["dispositivo_id"]
         paso_id = tunel["paso_id"]
-        last_seq = db().execute(
+        conn = db()
+        conn.execute("BEGIN IMMEDIATE")
+        last_seq = conn.execute(
             "SELECT COALESCE(MAX(secuencia), 0) FROM eventos WHERE dispositivo_id = ?",
             (dispositivo_id,)
         ).fetchone()[0]
@@ -328,18 +383,20 @@ def registrar_panel(app, db, estado, record):
             "agua_pendiente": agua_pendiente
         }
         payload = json.dumps(event_data, sort_keys=True, ensure_ascii=False)
-        with db() as conn:
-            conn.execute(
-                "INSERT INTO eventos (evento_id, dispositivo_id, paso_id, secuencia, recibido_en, payload) VALUES (?, ?, ?, ?, ?, ?)",
-                (event_data["evento_id"], dispositivo_id, paso_id, seq, now_iso, payload)
-            )
+        conn.execute(
+            "INSERT INTO eventos (evento_id, dispositivo_id, paso_id, secuencia, recibido_en, payload) VALUES (?, ?, ?, ?, ?, ?)",
+            (event_data["evento_id"], dispositivo_id, paso_id, seq, now_iso, payload)
+        )
+        conn.commit()
         return event_data
 
     @app.post("/api/simulador/evento")
     def simular_evento():
-        if required and not session.get("lector") and not getattr(g, "es_master", False):
+        if not app.config["ENABLE_SIMULATOR"]:
+            return jsonify(error="simulador_deshabilitado"), 404
+        if not autorizado_admin():
             return jsonify(error="no_autorizado"), 401
-        body = request.get_json(silent=True, force=True) or {}
+        body = request.get_json(silent=True) or {}
         paso_id = body.get("paso_id", "tunel-01")
         tipo = body.get("tipo", "normal")
         tunel = db().execute("SELECT * FROM tuneles WHERE paso_id = ?", (paso_id,)).fetchone()
@@ -350,9 +407,11 @@ def registrar_panel(app, db, estado, record):
 
     @app.post("/api/simulador/disparar-todos")
     def simular_todos():
-        if required and not session.get("lector") and not getattr(g, "es_master", False):
+        if not app.config["ENABLE_SIMULATOR"]:
+            return jsonify(error="simulador_deshabilitado"), 404
+        if not autorizado_admin():
             return jsonify(error="no_autorizado"), 401
-        body = request.get_json(silent=True, force=True) or {}
+        body = request.get_json(silent=True) or {}
         tipo = body.get("tipo", "normal")
         tuneles = db().execute("SELECT * FROM tuneles ORDER BY paso_id ASC").fetchall()
         eventos = [generar_evento_simulado(t, tipo) for t in tuneles]

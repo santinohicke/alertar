@@ -1155,3 +1155,26 @@ dialog.modal-card::backdrop {
   backdrop-filter: blur(3px);
 }
 
+
+
+/* Modal de nuevo túnel (la CSP no permite estilos en línea) */
+.oculto { display: none; }
+.modal-cabecera { margin-bottom: 16px; }
+.modal-cabecera h3 { margin: 0; }
+.modal-cerrar { padding: 4px 10px; font-size: 14px; }
+.modal-ayuda { margin: 0 0 16px; font-size: 13px; line-height: 1.4; }
+.form-tunel { display: flex; flex-direction: column; gap: 14px; }
+.form-tunel .campo { display: flex; flex-direction: column; gap: 6px; margin: 0; }
+.form-tunel .campo span { font-size: 13px; font-weight: 600; }
+.form-tunel .campo input { width: 100%; box-sizing: border-box; }
+.campo-par { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.campo-par .campo { min-width: 0; }
+.campo-avanzado { display: flex; flex-direction: column; gap: 14px; }
+.campo-avanzado summary { cursor: pointer; font-size: 13px; color: var(--muted, #9aa7b2); margin-bottom: 14px; }
+.campo-avanzado .campo { margin-bottom: 14px; }
+.modal-acciones { display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px; }
+.modal-exito { color: #34d399; font-weight: 700; font-size: 15px; margin: 0 0 8px; }
+.form-tunel .error { color: #f87171; font-size: 13px; margin: 0; }
+#nuevo-tunel-key-val { word-break: break-all; }
+.tunel-pills { margin-top: 6px; }
+.nowrap { white-space: nowrap; }

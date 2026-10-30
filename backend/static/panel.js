@@ -1314,6 +1314,45 @@ function calculateStats(events) {
 }
 
 
+/* Cada evento cuenta como máximo el intervalo de muestreo (15 s) o hasta el
+   evento siguiente, lo que sea menor. Pasado ese lapso sin recibir nada no se
+   suma tiempo a ningún estado: queda como "sin comunicación". */
+const MUESTRA_S = 15;
+
+function calculateTimeStats(events) {
+  const timed = events
+    .map(e => ({ e, t: eventDate(e) }))
+    .filter(x => x.t)
+    .sort((a, b) => (a.t - b.t) || (Number(a.e.secuencia) - Number(b.e.secuencia)));
+  const r = {
+    codes: new Map(), normal: 0, water: 0,
+    valid1: 0, valid2: 0, monitored: 0, noComm: 0
+  };
+  for (let i = 0; i < timed.length; i++) {
+    const { e, t } = timed[i];
+    const gap = i + 1 < timed.length
+      ? (timed[i + 1].t - t) / 1000
+      : Infinity;
+    const dur = Math.min(Math.max(gap, 0), MUESTRA_S);
+    if (!dur) continue;
+    r.monitored += dur;
+    const code = e.codigo || "SIN CÓDIGO";
+    r.codes.set(code, (r.codes.get(code) || 0) + dur);
+    if (code === "OK-001") r.normal += dur;
+    if (e.agua_activa) r.water += dur;
+    if (e.sensor1_valido) r.valid1 += dur;
+    if (e.sensor2_valido) r.valid2 += dur;
+  }
+  const ms = rangeMs(statsRange);
+  const now = Date.now();
+  const start = ms !== null
+    ? now - ms
+    : (timed.length ? timed[0].t.getTime() : now);
+  r.noComm = Math.max(0, (now - start) / 1000 - r.monitored);
+  return r;
+}
+
+
 function renderCodeBars(
   codes,
   total
@@ -1342,6 +1381,7 @@ function renderCodeBars(
       (a, b) =>
         b[1] - a[1]
     )
+    .filter(([, count]) => count > 0)
     .forEach(
       ([code, count]) => {
         const row =
@@ -1370,7 +1410,7 @@ function renderCodeBars(
 
 
         span.textContent =
-          `${count.toLocaleString("es-AR")} · ${pct(count, total)}`;
+          `${duration(count)} · ${pct(count, total)}`;
 
 
         label.append(
@@ -2360,16 +2400,18 @@ function renderStats() {
       .toLocaleString("es-AR");
 
 
+  const t =
+    calculateTimeStats(events);
+
   $("stat-normal").textContent =
     pct(
-      s.normal,
-      s.total
+      t.normal,
+      t.monitored
     );
 
 
   $("stat-agua").textContent =
-    s.waterActive
-      .toLocaleString("es-AR");
+    duration(t.water);
 
 
   $("stat-ultima").textContent =
@@ -2387,15 +2429,15 @@ function renderStats() {
 
   $("stat-sensor1").textContent =
     pct(
-      s.valid1,
-      s.total
+      t.valid1,
+      t.monitored
     );
 
 
   $("stat-sensor2").textContent =
     pct(
-      s.valid2,
-      s.total
+      t.valid2,
+      t.monitored
     );
 
 
@@ -2441,9 +2483,25 @@ function renderStats() {
       .toLocaleString("es-AR");
 
 
+  $("stat-monitoreado").textContent =
+    duration(t.monitored);
+
+  $("stat-sin-comunicacion").textContent =
+    duration(t.noComm);
+
+  const porCodigo =
+    new Map(t.codes);
+
+  if (t.noComm > 0) {
+    porCodigo.set(
+      "SIN COMUNICACIÓN",
+      t.noComm
+    );
+  }
+
   renderCodeBars(
-    s.codes,
-    s.total
+    porCodigo,
+    t.monitored + t.noComm
   );
 
 

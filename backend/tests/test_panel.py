@@ -39,7 +39,11 @@ class PanelTests(unittest.TestCase):
 
     def test_device_key_can_only_ingest(self):
         self.assertEqual(self.client.post("/api/eventos", json=self.event, headers=self.headers(True)).status_code, 201)
-        self.assertEqual(self.client.post("/api/dispositivos/esp32-01/reserva", json={"instalacion_id":"f"*32}, headers=self.headers(True)).status_code, 201)
+        resp = self.client.post(
+            "/api/dispositivos/esp32-01/reserva",
+            json={"instalacion_id": "f" * 32}, headers=self.headers(True),
+        )
+        self.assertEqual(resp.status_code, 201)
         self.assertEqual(self.client.get("/api/panel/tunel-01", headers=self.headers(True)).status_code, 401)
 
     def test_login_csrf_cookie_and_read_only_session(self):

@@ -240,7 +240,10 @@ def create_app(config=None):
                 raise ValueError()
         except ValueError:
             return jsonify(error="paginacion_invalida"), 400
-        rows = db().execute("SELECT * FROM eventos WHERE paso_id = ? ORDER BY secuencia DESC LIMIT ? OFFSET ?", (paso_id, limit, offset)).fetchall()
+        rows = db().execute(
+            "SELECT * FROM eventos WHERE paso_id = ? ORDER BY secuencia DESC LIMIT ? OFFSET ?",
+            (paso_id, limit, offset),
+        ).fetchall()
         total = db().execute("SELECT COUNT(*) FROM eventos WHERE paso_id = ?", (paso_id,)).fetchone()[0]
         return jsonify(paso_id=paso_id, eventos=[record(row) for row in rows], total=total, limite=limit, offset=offset)
 

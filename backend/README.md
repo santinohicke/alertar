@@ -27,6 +27,7 @@ Este modo de desarrollo no exige autenticación y solo escucha en `127.0.0.1`. W
 | `ALERTAR_API_KEY` | Clave administrativa y contraseña del panel, mínimo 24 caracteres. |
 | `ALERTAR_DEVICE_KEY` | Clave inicial de `tunel-01`. Si falta, se genera una aleatoria; las demás claves se crean desde el panel. |
 | `ALERTAR_DATABASE` | Ruta de la base SQLite. |
+| `ALERTAR_DEMO_CLAVES` | **Solo rama `demo`.** `1` (por defecto) guarda también la clave de cada dispositivo en `tuneles.clave_demo` para mostrarla en el panel. Antes de un uso real: `0` y vaciar esa columna. |
 | `ALERTAR_ENABLE_SIMULATOR` | `1` habilita `/api/simulador/*` (solo para desarrollo; inserta eventos falsos). |
 
 Las claves de dispositivo se guardan como hash; la clave en claro solo se muestra al crearla o reemplazarla. Las escrituras de administración desde el panel exigen el encabezado `X-CSRF-Token`.

@@ -122,6 +122,27 @@ class TunelesTests(PanelTests):
         self.assertNotIn(clave, listado.text)
         self.assertNotIn("api_key", listado.json["tuneles"][0])
 
+    # SOLO PARA LA DEMO: la clave se guarda también para mostrarla en el panel (DEMO_GUARDAR_CLAVES).
+    def test_demo_key_readable_only_from_panel(self):
+        d = self.crear().json
+        url = f"/api/tuneles/{d['paso_id']}/clave"
+        self.assertEqual(self.client.get(url, headers=self.headers()).json["clave"], d["api_key"])
+        self.assertEqual(self.client.get(url).status_code, 401)
+        self.assertEqual(self.client.get(url, headers={"X-API-Key": d["api_key"]}).status_code, 401)
+        self.assertEqual(self.client.get(url, headers=self.headers(device=True)).status_code, 401)
+        nueva = self.client.post(url, headers=self.headers()).json["api_key"]
+        self.assertEqual(self.client.get(url, headers=self.headers()).json["clave"], nueva)
+        self.assertEqual(self.client.get("/api/tuneles/no-existe/clave", headers=self.headers()).status_code, 404)
+
+    def test_demo_key_storage_can_be_disabled(self):
+        self.app = create_app({**self.config, "DEMO_GUARDAR_CLAVES": False})
+        self.client = self.app.test_client()
+        d = self.crear().json
+        self.assertEqual(self.client.get(f"/api/tuneles/{d['paso_id']}/clave", headers=self.headers()).status_code, 404)
+        import sqlite3
+        with sqlite3.connect(self.config["DATABASE"]) as con:
+            self.assertEqual(con.execute("SELECT clave_demo FROM tuneles WHERE paso_id=?", (d["paso_id"],)).fetchone()[0], None)
+
     def test_rotate_key_invalidates_old(self):
         d = self.crear().json
         nueva = self.client.post(f"/api/tuneles/{d['paso_id']}/clave", headers=self.headers()).json["api_key"]

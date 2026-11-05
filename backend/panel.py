@@ -252,10 +252,13 @@ def registrar_panel(app, db, estado, record):
                 return jsonify(error="ya_existe", detalle="El ID de túnel o dispositivo ya está en uso."), 409
             clave = secrets.token_urlsafe(24)
             ahora = datetime.now(timezone.utc).isoformat()
+            # SOLO PARA LA DEMO: clave_demo guarda la clave para mostrarla en el panel.
+            clave_demo = clave if app.config.get("DEMO_GUARDAR_CLAVES") else None
             conn.execute(
-                "INSERT INTO tuneles (paso_id, nombre, dispositivo_id, api_key, creado_en, ubicacion, latitud, longitud)"
-                " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (paso_id, nombre, dispositivo_id, app.extensions["alertar_hash"](clave), ahora, ubicacion, lat, lon))
+                "INSERT INTO tuneles (paso_id, nombre, dispositivo_id, api_key, creado_en, ubicacion, latitud, longitud,"
+                " clave_demo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (paso_id, nombre, dispositivo_id, app.extensions["alertar_hash"](clave), ahora, ubicacion, lat, lon,
+                 clave_demo))
             conn.commit()
         except Exception:
             conn.rollback()
@@ -292,12 +295,26 @@ def registrar_panel(app, db, estado, record):
         if not autorizado_admin():
             return jsonify(error="no_autorizado"), 401
         clave = secrets.token_urlsafe(24)
+        clave_demo = clave if app.config.get("DEMO_GUARDAR_CLAVES") else None  # SOLO PARA LA DEMO
         with db() as conn:
-            cur = conn.execute("UPDATE tuneles SET api_key=? WHERE paso_id=?",
-                               (app.extensions["alertar_hash"](clave), paso_id))
+            cur = conn.execute("UPDATE tuneles SET api_key=?, clave_demo=? WHERE paso_id=?",
+                               (app.extensions["alertar_hash"](clave), clave_demo, paso_id))
         if not cur.rowcount:
             return jsonify(error="tunel_no_encontrado"), 404
         return jsonify(paso_id=paso_id, api_key=clave)
+
+    @app.get("/api/tuneles/<paso_id>/clave")
+    def clave_demo_tunel(paso_id):
+        """SOLO PARA LA DEMO: devuelve la clave guardada en clave_demo para mostrarla en el panel.
+        Requiere sesión del panel o clave administrativa. Con ALERTAR_DEMO_CLAVES=0 responde 404."""
+        if not autorizado_admin():
+            return jsonify(error="no_autorizado"), 401
+        if not app.config.get("DEMO_GUARDAR_CLAVES"):
+            return jsonify(error="demo_desactivada"), 404
+        fila = db().execute("SELECT clave_demo FROM tuneles WHERE paso_id = ?", (paso_id,)).fetchone()
+        if not fila:
+            return jsonify(error="tunel_no_encontrado"), 404
+        return jsonify(paso_id=paso_id, clave=fila["clave_demo"])
 
     @app.delete("/api/tuneles/<paso_id>")
     def eliminar_tunel(paso_id):

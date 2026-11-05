@@ -8,7 +8,7 @@ El panel Flask y la API moderna se sirven desde la Raspberry Pi mediante HTTPS y
 
 - Muestra estado general, agua, dos sensores y los últimos 20 eventos.
 - Distingue la última recepción de la vigencia de la medición. Un dato antiguo o sin hora no se muestra como habilitación vigente para circular.
-- Actualiza cada 15 segundos, pausa en una pestaña oculta y limita las consultas simultáneas.
+- Actualiza cada 5 segundos, pausa en una pestaña oculta y limita las consultas simultáneas.
 - En producción, `ALERTAR_REQUIRE_AUTH=1` protege el panel y las rutas API. La clave administrativa permite lectura y gestión; la clave de dispositivo solo permite ingesta y reserva. Las sesiones de lectura usan cookie `Secure`, `HttpOnly` y `SameSite=Strict`, y los formularios usan CSRF.
 
 ## Despliegue específico

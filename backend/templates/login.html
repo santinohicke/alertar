@@ -1,3 +1,38 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Acceso · AlertAR</title><link rel="stylesheet" href="{{ url_for('static',filename='panel.css') }}"></head>
-<body><main class="login"><p class="marca">AlertAR <span>CONTROL DE PASOS</span></p><section class="card"><h1>Acceso al monitoreo</h1><p>Estado del túnel e historial de mediciones. Acceso de solo lectura.</p><form method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><label for="clave">Clave de acceso</label><input id="clave" name="clave" type="password" maxlength="256" required autocomplete="current-password">{% if error %}<p role="alert" class="error">{{ error }}</p>{% endif %}<button type="submit">Ingresar al panel</button></form><p class="muted">La clave no se guarda en el navegador. La sesión vence a las 8 horas.</p></section></main></body></html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Acceso · AlertAR</title>
+  <link rel="stylesheet" href="{{ url_for('static',filename='panel.css') }}">
+</head>
+<body class="login-page">
+  <main class="login">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="1" y="1" width="22" height="22" rx="5"></rect>
+        <circle cx="8" cy="12" r="3"></circle>
+        <circle cx="16" cy="12" r="3"></circle>
+      </svg>
+      <div>
+        <p class="brand-name">AlertAR</p>
+        <p class="brand-sub">Control de pasos a nivel</p>
+      </div>
+    </div>
+    <section class="login-card">
+      <h1>Ingresar</h1>
+      <form method="post" class="form">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <label class="field" for="clave">
+          <span>Clave de acceso</span>
+          <input id="clave" name="clave" type="password" maxlength="256" required autocomplete="current-password">
+        </label>
+        {% if error %}<p role="alert" class="form-error">{{ error }}</p>{% endif %}
+        <button type="submit" class="btn btn-primary btn-block">Ingresar</button>
+      </form>
+      <p class="login-note">La sesión vence a las 8 horas</p>
+    </section>
+  </main>
+</body>
+</html>

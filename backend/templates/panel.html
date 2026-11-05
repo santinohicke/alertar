@@ -1,956 +1,474 @@
 <!doctype html>
 <html lang="es">
-
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="dark">
   <title>Monitoreo · AlertAR</title>
-
-  <link
-    rel="stylesheet"
-    href="{{ url_for('static', filename='panel.css') }}"
-  >
-
-  <script
-    defer
-    src="{{ url_for('static', filename='panel.js') }}"
-  ></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='panel.css') }}">
+  <script defer src="{{ url_for('static', filename='panel.js') }}"></script>
 </head>
-
 <body>
 
-<main>
+<div class="app">
 
-  <header>
-    <div>
-      <p class="marca">
-        AlertAR
-        <span>CONTROL DE PASOS</span>
-      </p>
-
-      <h1>Monitoreo del túnel</h1>
-
-      <p class="muted" id="header-tunnel-subtitle">
-        Túnel 01 · ESP32 · Telemetría en vivo
-      </p>
-      <a id="header-tunnel-map" class="muted" href="#" target="_blank" rel="noopener noreferrer" hidden>Ver ubicación en el mapa</a>
+  <!-- ===================== BARRA LATERAL ===================== -->
+  <aside class="sidebar" aria-label="Pasos a nivel">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="1" y="1" width="22" height="22" rx="5"></rect>
+        <circle cx="8" cy="12" r="3"></circle>
+        <circle cx="16" cy="12" r="3"></circle>
+      </svg>
+      <div>
+        <p class="brand-name">AlertAR</p>
+        <p class="brand-sub">Control de pasos a nivel</p>
+      </div>
     </div>
 
-    {% if protegido %}
-    <form action="{{ url_for('salir') }}" method="post">
-      <input
-        type="hidden"
-        name="csrf"
-        value="{{ csrf }}"
-      >
-
-      <button class="secondary">
-        Cerrar sesión
+    <div class="sidebar-section">
+      <div class="sidebar-heading">
+        <span>Pasos a nivel</span>
+        <span id="tuneles-count" class="count"></span>
+      </div>
+      <div id="tuneles-pills" class="site-list" role="group" aria-label="Seleccionar paso a nivel">
+        <!-- Cargado por JavaScript -->
+      </div>
+      <button id="btn-nuevo-tunel-top" class="btn btn-ghost btn-block" type="button">
+        <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"></path></svg>
+        Agregar paso a nivel
       </button>
-    </form>
-    {% endif %}
-  </header>
-
-
-  <!-- =====================================================
-       SELECTOR DE PASO A NIVEL (TÚNEL)
-       ===================================================== -->
-
-  <div class="tunel-selector-bar card">
-    <div class="tunel-selector-content">
-      <div>
-        <p class="eyebrow">PASO A NIVEL SELECCIONADO</p>
-        <div id="tuneles-pills" class="range-selector tunel-pills" role="group" aria-label="Seleccionar túnel activo">
-          <!-- Cargado dinámicamente por JavaScript -->
-        </div>
-      </div>
-      <div>
-        <button id="btn-nuevo-tunel-top" class="secondary nowrap" type="button">
-          + Nuevo Túnel
-        </button>
-      </div>
     </div>
-  </div>
 
+    <div class="sidebar-foot">
+      {% if protegido %}
+      <form action="{{ url_for('salir') }}" method="post">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button class="btn btn-ghost btn-block">Cerrar sesión</button>
+      </form>
+      {% endif %}
+    </div>
+  </aside>
 
-  <!-- =====================================================
-       NAVEGACIÓN
-       ===================================================== -->
+  <!-- ===================== CONTENIDO ===================== -->
+  <main class="main">
 
-  <nav class="tabs" aria-label="Secciones">
-
-    <button
-      class="tab active"
-      data-view="monitor"
-      aria-selected="true"
-      type="button"
-    >
-      Monitoreo
-    </button>
-
-    <button
-      class="tab"
-      data-view="historial"
-      aria-selected="false"
-      type="button"
-    >
-      Historial
-    </button>
-
-    <button
-      class="tab"
-      data-view="estadisticas"
-      aria-selected="false"
-      type="button"
-    >
-      Estadísticas
-    </button>
-
-  </nav>
-
-
-  <!-- =====================================================
-       MONITOREO
-       ===================================================== -->
-
-  <div id="vista-monitor">
-
-    <section
-      id="estado"
-      class="card estado neutral"
-      aria-live="polite"
-    >
-
-      <p class="eyebrow">
-        ÚLTIMO ESTADO CONOCIDO
-      </p>
-
-      <h2 id="diagnostico">
-        Esperando datos
-      </h2>
-
-      <p id="vigencia">
-        Consultando el servidor…
-      </p>
-
-      <span id="codigo" class="pill">
-        SIN DATOS
-      </span>
-
-    </section>
-
-
-    <section class="grid" aria-label="Sensores">
-
-      <article class="card">
-        <p class="eyebrow">CARRIL 1</p>
-        <h2 id="carril1">—</h2>
-        <p id="valido1" class="muted">Sin medición</p>
-      </article>
-
-      <article class="card">
-        <p class="eyebrow">CARRIL 2</p>
-        <h2 id="carril2">—</h2>
-        <p id="valido2" class="muted">Sin medición</p>
-      </article>
-
-      <article class="card">
-        <p class="eyebrow">AGUA</p>
-        <h2 id="agua">—</h2>
-        <p class="muted">
-          Estado confirmado por el ESP32
+    <header class="page-head">
+      <div class="page-title">
+        <h1 id="header-tunnel-name">Monitoreo del túnel</h1>
+        <p class="page-meta">
+          <span id="header-tunnel-subtitle">Cargando paso a nivel…</span>
+          <a id="header-tunnel-map" href="#" target="_blank" rel="noopener noreferrer" hidden>
+            Ver en el mapa
+            <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3h7v7M13 3 5 11"></path></svg>
+          </a>
         </p>
-      </article>
+      </div>
+      <div class="live" id="live" data-state="idle">
+        <span class="live-dot" aria-hidden="true"></span>
+        <span id="live-text">Conectando…</span>
+      </div>
+    </header>
 
-    </section>
+    <nav class="tabs" aria-label="Secciones" role="tablist">
+      <button class="tab active" data-view="monitor" aria-selected="true" type="button" role="tab">Monitoreo</button>
+      <button class="tab" data-view="historial" aria-selected="false" type="button" role="tab">Historial</button>
+      <button class="tab" data-view="estadisticas" aria-selected="false" type="button" role="tab">Estadísticas</button>
+      <button class="tab" data-view="mapa" aria-selected="false" type="button" role="tab">Mapa</button>
+    </nav>
 
+    <!-- ===================== MONITOREO ===================== -->
+    <div id="vista-monitor" class="view">
 
-    <section class="card">
+      <section id="estado" class="status" data-sev="unknown" aria-live="polite">
+        <div class="status-signal">
+          <span class="lamp" aria-hidden="true"></span>
+          <span id="senal" class="signal-text">Sin datos</span>
+        </div>
+        <div class="status-body">
+          <h2 id="diagnostico">Esperando datos</h2>
+          <p id="vigencia">Consultando el servidor…</p>
+        </div>
+        <dl class="status-meta">
+          <div><dt>Código</dt><dd><span id="codigo" class="code">—</span></dd></div>
+          <div><dt>Medición</dt><dd id="medido-en" class="num">—</dd></div>
+          <div><dt>Secuencia</dt><dd id="secuencia-actual" class="num">—</dd></div>
+        </dl>
+      </section>
 
-      <div class="section-head">
+      <section class="readouts" aria-label="Sensores">
+        <article class="readout" id="readout-c1">
+          <header><span class="readout-label">Carril 1</span></header>
+          <p class="readout-value num" id="carril1">—</p>
+          <div class="gauge" aria-hidden="true"><span class="gauge-fill" id="gauge1"></span><span class="gauge-mark m5"></span><span class="gauge-mark m100"></span></div>
+          <p class="readout-foot" id="valido1">Sin medición</p>
+        </article>
+        <article class="readout" id="readout-c2">
+          <header><span class="readout-label">Carril 2</span></header>
+          <p class="readout-value num" id="carril2">—</p>
+          <div class="gauge" aria-hidden="true"><span class="gauge-fill" id="gauge2"></span><span class="gauge-mark m5"></span><span class="gauge-mark m100"></span></div>
+          <p class="readout-foot" id="valido2">Sin medición</p>
+        </article>
+        <article class="readout" id="readout-agua">
+          <header><span class="readout-label">Agua</span></header>
+          <p class="readout-value" id="agua">—</p>
+          <ol class="steps" id="agua-steps" aria-hidden="true" title="Cierre preventivo tras 20 s de agua confirmada">
+            <li data-step="0">Seco</li><li data-step="1">Confirmando</li><li data-step="2">Crítica</li>
+          </ol>
+        </article>
+      </section>
 
-        <div>
-          <h2>Eventos recientes</h2>
+      <section class="panel">
+        <header class="panel-head">
+          <div>
+            <h2>Eventos recientes</h2>
+          </div>
+          <div class="panel-actions">
+            <span id="conexion" class="sr-only" role="status">Conectando…</span>
+            <button id="actualizar" class="btn" type="button">
+              <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.5M13 2.5v3h-3"></path></svg>
+              Actualizar
+            </button>
+          </div>
+        </header>
+        <div class="table-wrap">
+          <table class="data">
+            <thead>
+              <tr><th>Medición</th><th>Estado</th><th>Diagnóstico</th><th class="r">Carril 1</th><th class="r">Carril 2</th><th class="r">Secuencia</th></tr>
+            </thead>
+            <tbody id="eventos">
+              <tr class="empty"><td colspan="6">Sin registros todavía</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-          <p class="muted">
-            Últimos 20 registros, ordenados por secuencia de medición.
-          </p>
+      <!-- ===================== DATOS DEL DISPOSITIVO ===================== -->
+      <section class="panel" aria-labelledby="dispositivo-titulo">
+        <header class="panel-head">
+          <div>
+            <h2 id="dispositivo-titulo">Dispositivo</h2>
+          </div>
+        </header>
+        <dl class="device">
+          <div><dt>ID del paso</dt><dd id="disp-paso" class="mono">—</dd></div>
+          <div><dt>ID del dispositivo</dt><dd id="disp-id" class="mono">—</dd></div>
+          <div><dt>Coordenadas</dt><dd id="disp-coords" class="mono">—</dd></div>
+          <div><dt>URL de envío</dt><dd id="disp-url" class="mono">—</dd></div>
+        </dl>
+      </section>
+    </div>
+
+    <!-- ===================== HISTORIAL ===================== -->
+    <div id="vista-historial" class="view" hidden>
+
+      <section class="panel">
+        <header class="panel-head">
+          <div>
+            <h2>Historial</h2>
+            <p class="panel-sub"><span id="historial-total" class="num">—</span> registros</p>
+          </div>
+          <div class="panel-actions">
+            <label class="field-inline">
+              <span>Por página</span>
+              <select id="historial-limite">
+                <option value="10">10</option>
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+              </select>
+            </label>
+            <button id="historial-actualizar" class="btn" type="button">
+              <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.5M13 2.5v3h-3"></path></svg>
+              Actualizar
+            </button>
+          </div>
+        </header>
+
+        <div class="toolbar">
+          <p id="historial-estado" class="status-note" role="status"></p>
+          <div class="export">
+            <span class="export-label">Exportar</span>
+            <select id="export-formato" aria-label="Formato de exportación">
+              <option value="csv">CSV</option>
+              <option value="json">JSON</option>
+            </select>
+            <select id="export-cantidad" aria-label="Registros a exportar">
+              <option value="pagina">Página actual</option>
+              <option value="10">Últimos 10</option>
+              <option value="25">Últimos 25</option>
+              <option value="50">Últimos 50</option>
+              <option value="100">Últimos 100</option>
+              <option value="200">Últimos 200</option>
+              <option value="todos">Todos los registros</option>
+            </select>
+            <button id="exportar" class="btn" type="button">
+              <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8M4.5 6.5 8 10l3.5-3.5M3 13h10"></path></svg>
+              Descargar
+            </button>
+          </div>
+        </div>
+        <p id="export-estado" class="export-note" role="status"></p>
+
+        <div class="table-wrap tall">
+          <table class="data">
+            <thead>
+              <tr><th>Medición</th><th>Recepción</th><th>Estado</th><th>Diagnóstico</th><th>Agua</th><th class="r">Carril 1</th><th class="r">Carril 2</th><th class="r">Secuencia</th><th class="r"><span class="sr-only">Detalle</span></th></tr>
+            </thead>
+            <tbody id="historial-eventos">
+              <tr class="empty"><td colspan="9">Cargando…</td></tr>
+            </tbody>
+          </table>
         </div>
 
-        <button
-          id="actualizar"
-          class="secondary"
-          type="button"
-        >
-          Actualizar
-        </button>
+        <footer class="pager">
+          <p id="historial-rango" class="status-note"></p>
+          <div class="pager-controls">
+            <button id="pagina-primera" class="btn btn-icon" type="button" aria-label="Primera página">
+              <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M12 4 8 8l4 4M7 4 3 8l4 4"></path></svg>
+            </button>
+            <button id="pagina-anterior" class="btn btn-icon" type="button" aria-label="Página anterior">
+              <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 4 6 8l4 4"></path></svg>
+            </button>
+            <span id="pagina-info" class="pager-info num">Página 1</span>
+            <button id="pagina-siguiente" class="btn btn-icon" type="button" aria-label="Página siguiente">
+              <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="m6 4 4 4-4 4"></path></svg>
+            </button>
+            <button id="pagina-ultima" class="btn btn-icon" type="button" aria-label="Última página">
+              <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 4 4-4 4M9 4l4 4-4 4"></path></svg>
+            </button>
+            <label class="field-inline pager-go">
+              <span>Ir a</span>
+              <input id="pagina-numero" type="number" min="1" value="1">
+            </label>
+            <button id="pagina-ir" class="btn" type="button">Ir</button>
+          </div>
+        </footer>
+      </section>
+    </div>
 
-      </div>
+    <!-- ===================== ESTADÍSTICAS ===================== -->
+    <div id="vista-estadisticas" class="view" hidden>
 
-      <p id="conexion" role="status">
-        Conectando…
-      </p>
-
-
-      <div class="table-wrap">
-
-        <table>
-
-          <thead>
-          <tr>
-            <th>Medición</th>
-            <th>Código</th>
-            <th>Diagnóstico</th>
-            <th>Carril 1</th>
-            <th>Carril 2</th>
-            <th>Secuencia</th>
-          </tr>
-          </thead>
-
-          <tbody id="eventos">
-          <tr>
-            <td colspan="6">
-              Sin registros todavía.
-            </td>
-          </tr>
-          </tbody>
-
-        </table>
-
-      </div>
-
-    </section>
-
-  </div>
-
-
-  <!-- =====================================================
-       HISTORIAL
-       ===================================================== -->
-
-  <div id="vista-historial" hidden>
-
-    <section class="card">
-
-      <div class="section-head">
-
-        <div>
-          <h2>Historial de registros</h2>
-
-          <p class="muted">
-            Todos los eventos almacenados en la base de datos.
-          </p>
+      <div class="stats-toolbar">
+        <div id="stats-range" class="segmented" role="group" aria-label="Rango de análisis">
+          <button class="range-button" data-range="1h" type="button">1 h</button>
+          <button class="range-button" data-range="6h" type="button">6 h</button>
+          <button class="range-button active" data-range="24h" type="button">24 h</button>
+          <button class="range-button" data-range="7d" type="button">7 días</button>
+          <button class="range-button" data-range="all" type="button">Todo</button>
         </div>
-
-        <button
-          id="historial-actualizar"
-          class="secondary"
-          type="button"
-        >
-          Actualizar
-        </button>
-
-      </div>
-
-
-      <div class="historial-toolbar">
-
-        <label>
-          Registros por página
-
-          <select id="historial-limite">
-            <option value="10">10</option>
-            <option value="25" selected>25</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
-            <option value="200">200</option>
-          </select>
-        </label>
-
-
-        <div class="registro-total">
-
-          <strong id="historial-total">
-            —
-          </strong>
-
-          <span class="muted">
-            registros almacenados
-          </span>
-
-        </div>
-
-      </div>
-
-
-      <p
-        id="historial-estado"
-        class="muted"
-        role="status"
-      >
-        Abrí esta pestaña para cargar el historial.
-      </p>
-
-
-      <div class="table-wrap historial-table">
-
-        <table>
-
-          <thead>
-          <tr>
-            <th>Detalle</th>
-            <th>Medición</th>
-            <th>Recepción</th>
-            <th>Código</th>
-            <th>Diagnóstico</th>
-            <th>Agua</th>
-            <th>Carril 1</th>
-            <th>Carril 2</th>
-            <th>Secuencia</th>
-          </tr>
-          </thead>
-
-          <tbody id="historial-eventos">
-          <tr>
-            <td colspan="9">
-              Historial todavía no cargado.
-            </td>
-          </tr>
-          </tbody>
-
-        </table>
-
-      </div>
-
-
-      <div class="paginacion">
-
-        <div class="paginacion-botones">
-
-          <button
-            id="pagina-primera"
-            class="secondary"
-            type="button"
-          >
-            « Primera
-          </button>
-
-          <button
-            id="pagina-anterior"
-            class="secondary"
-            type="button"
-          >
-            ‹ Anterior
-          </button>
-
-          <button
-            id="pagina-siguiente"
-            class="secondary"
-            type="button"
-          >
-            Siguiente ›
-          </button>
-
-          <button
-            id="pagina-ultima"
-            class="secondary"
-            type="button"
-          >
-            Última »
-          </button>
-
-        </div>
-
-
-        <div class="paginacion-info">
-
-          <span id="pagina-info">
-            Página 1
-          </span>
-
-          <label>
-            Ir a
-
-            <input
-              id="pagina-numero"
-              type="number"
-              min="1"
-              value="1"
-            >
-          </label>
-
-          <button
-            id="pagina-ir"
-            class="secondary"
-            type="button"
-          >
-            Ir
-          </button>
-
-        </div>
-
-      </div>
-
-
-      <p
-        id="historial-rango"
-        class="muted"
-      ></p>
-
-    </section>
-
-
-    <section class="card export-card">
-
-      <div class="section-head">
-
-        <div>
-          <h2>Exportar registros</h2>
-
-          <p class="muted">
-            Descargá una copia del historial almacenado.
-          </p>
-        </div>
-
-      </div>
-
-
-      <div class="export-controls">
-
-        <label>
-          Formato
-
-          <select id="export-formato">
-            <option value="csv">CSV</option>
-            <option value="json">JSON</option>
-          </select>
-        </label>
-
-
-        <label>
-          Registros
-
-          <select id="export-cantidad">
-
-            <option value="pagina">
-              Página actual
-            </option>
-
-            <option value="10">
-              Últimos 10
-            </option>
-
-            <option value="25">
-              Últimos 25
-            </option>
-
-            <option value="50">
-              Últimos 50
-            </option>
-
-            <option value="100">
-              Últimos 100
-            </option>
-
-            <option value="200">
-              Últimos 200
-            </option>
-
-            <option value="todos">
-              Todos los registros
-            </option>
-
-          </select>
-        </label>
-
-
-        <button
-          id="exportar"
-          type="button"
-        >
-          Exportar
-        </button>
-
-      </div>
-
-
-      <p
-        id="export-estado"
-        class="muted"
-        role="status"
-      >
-        Los registros se exportan del más reciente al más antiguo.
-      </p>
-
-    </section>
-
-  </div>
-
-
-  <!-- =====================================================
-       ESTADÍSTICAS
-       ===================================================== -->
-
-  <div id="vista-estadisticas" hidden>
-
-    <section class="card stats-header">
-
-      <div class="section-head">
-
-        <div>
-          <h2>Estadísticas</h2>
-
-          <p class="muted">
-            Análisis de los eventos almacenados.
-          </p>
-        </div>
-
-        <button
-          id="stats-actualizar"
-          class="secondary"
-          type="button"
-        >
+        <p id="stats-range-label" class="sr-only">Últimas 24 horas</p>
+        <p id="stats-estado" class="status-note" role="status"></p>
+        <button id="stats-actualizar" class="btn" type="button">
+          <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M13 8a5 5 0 1 1-1.5-3.5M13 2.5v3h-3"></path></svg>
           Recalcular
         </button>
-
       </div>
+      <div class="progress" id="stats-progress" hidden><span id="stats-progress-bar"></span></div>
 
+      <div id="stats-body" class="stats-body">
 
-      <div class="stats-range-area">
-
-        <div>
-
-          <p class="range-title">
-            Rango de análisis
-          </p>
-
-          <div
-            id="stats-range"
-            class="range-selector"
-            role="group"
-            aria-label="Rango de análisis"
-          >
-
-            <button
-              class="range-button"
-              data-range="1h"
-              type="button"
-            >
-              1 h
-            </button>
-
-            <button
-              class="range-button"
-              data-range="6h"
-              type="button"
-            >
-              6 h
-            </button>
-
-            <button
-              class="range-button active"
-              data-range="24h"
-              type="button"
-            >
-              24 h
-            </button>
-
-            <button
-              class="range-button"
-              data-range="7d"
-              type="button"
-            >
-              7 días
-            </button>
-
-            <button
-              class="range-button"
-              data-range="all"
-              type="button"
-            >
-              Todo
-            </button>
-
+        <section class="kpis" aria-label="Resumen">
+          <div class="kpi kpi-primary">
+            <p class="kpi-label">Tiempo en OK-001</p>
+            <p class="kpi-value num" id="stat-normal">—</p>
           </div>
+          <div class="kpi">
+            <p class="kpi-label">Agua activa</p>
+            <p class="kpi-value num" id="stat-agua">—</p>
+          </div>
+          <div class="kpi">
+            <p class="kpi-label">Tiempo monitoreado</p>
+            <p class="kpi-value num" id="stat-monitoreado">—</p>
+          </div>
+          <div class="kpi">
+            <p class="kpi-label">Registros en rango</p>
+            <p class="kpi-value num" id="stat-total">—</p>
+            <p class="kpi-sub">de <span id="stat-base" class="num">—</span> en la base</p>
+          </div>
+          <div class="kpi">
+            <p class="kpi-label">Reinicios del ESP32</p>
+            <p class="kpi-value num" id="stat-arranques">—</p>
+          </div>
+          <div class="kpi">
+            <p class="kpi-label">Última recepción</p>
+            <p class="kpi-value num kpi-small" id="stat-ultima">—</p>
+            <p class="kpi-sub" id="stat-ultima-edad">—</p>
+          </div>
+        </section>
 
+        <section class="panel">
+          <header class="panel-head">
+            <div>
+              <h2>Estado y eventos recibidos</h2>
+            </div>
+            <span id="actividad-resolucion" class="badge">—</span>
+          </header>
+          <div class="chart" id="stats-actividad"><div class="skeleton chart-skeleton"></div></div>
+          <div class="chart-foot">
+            <p id="stats-actividad-detalle" class="chart-readout"></p>
+            <div class="legend">
+              <span><i class="sw sw-ok"></i>Habilitado</span>
+              <span><i class="sw sw-warn"></i>Precaución</span>
+              <span><i class="sw sw-crit"></i>Cerrado</span>
+              <span><i class="sw sw-none"></i>Sin datos</span>
+            </div>
+          </div>
+        </section>
+
+        <div class="split">
+          <section class="panel">
+            <header class="panel-head">
+              <div>
+                <h2 title="Cada aviso cuenta hasta 15 s si no llega otro; después no se suma tiempo a ningún estado">Tiempo por código</h2>
+              </div>
+            </header>
+            <div id="stats-codigos" class="codes"><div class="skeleton line"></div><div class="skeleton line"></div><div class="skeleton line"></div></div>
+          </section>
+
+          <section class="panel">
+            <header class="panel-head">
+              <div>
+                <h2>Sensores</h2>
+              </div>
+            </header>
+            <table class="data compact">
+              <thead><tr><th>Sensor</th><th class="r">Lectura válida</th><th class="r">Promedio</th><th class="r">Máximo</th></tr></thead>
+              <tbody>
+                <tr><td><i class="sw sw-c1"></i>Carril 1</td><td class="r num" id="stat-sensor1">—</td><td class="r num" id="stat-c1-prom">—</td><td class="r num" id="stat-c1-max">—</td></tr>
+                <tr><td><i class="sw sw-c2"></i>Carril 2</td><td class="r num" id="stat-sensor2">—</td><td class="r num" id="stat-c2-prom">—</td><td class="r num" id="stat-c2-max">—</td></tr>
+              </tbody>
+            </table>
+
+            <h3 class="subhead">Comunicación</h3>
+            <dl class="deflist">
+              <div><dt>Demora promedio</dt><dd class="num" id="stat-delay-prom">—</dd></div>
+              <div><dt>Demora máxima</dt><dd class="num" id="stat-delay-max">—</dd></div>
+              <div><dt>Saltos de secuencia</dt><dd class="num" id="stat-gaps">—</dd></div>
+              <div><dt>Eventos sin hora medida</dt><dd class="num" id="stat-sin-fecha">—</dd></div>
+            </dl>
+          </section>
         </div>
 
-        <p
-          id="stats-range-label"
-          class="muted range-description"
-        >
-          Últimas 24 horas.
-        </p>
+        <section class="panel">
+          <header class="panel-head">
+            <div>
+              <h2>Obstrucción por carril</h2>
+            </div>
+            <div class="legend">
+              <span><i class="sw sw-c1"></i>Carril 1</span>
+              <span><i class="sw sw-c2"></i>Carril 2</span>
+            </div>
+          </header>
+          <div class="chart" id="stats-obstruccion"><div class="skeleton chart-skeleton"></div></div>
+          <p id="stats-obstruccion-detalle" class="chart-readout"></p>
+        </section>
 
       </div>
+    </div>
 
-
-      <p
-        id="stats-estado"
-        class="muted"
-        role="status"
-      >
-        Abrí esta pestaña para calcular las estadísticas.
-      </p>
-
-    </section>
-
-
-    <!-- ===================================================
-         RESUMEN
-         =================================================== -->
-
-    <section class="stats-grid">
-
-      <article class="card stat-card">
-        <p class="eyebrow">REGISTROS EN RANGO</p>
-        <h2 id="stat-total">—</h2>
-        <p class="muted">Eventos analizados</p>
-      </article>
-
-      <article class="card stat-card">
-        <p class="eyebrow">TOTAL EN BASE</p>
-        <h2 id="stat-base">—</h2>
-        <p class="muted">Eventos almacenados</p>
-      </article>
-
-      <article class="card stat-card">
-        <p class="eyebrow">ÚLTIMA RECEPCIÓN</p>
-        <h2 id="stat-ultima">—</h2>
-        <p id="stat-ultima-edad" class="muted">—</p>
-      </article>
-
-      <article class="card stat-card">
-        <p class="eyebrow">ARRANQUES ESP32</p>
-        <h2 id="stat-arranques">—</h2>
-        <p class="muted">En el rango seleccionado</p>
-      </article>
-
-      <article class="card stat-card">
-        <p class="eyebrow">SITUACIÓN NORMAL</p>
-        <h2 id="stat-normal">—</h2>
-        <p class="muted">Tiempo con código OK-001 sobre el tiempo monitoreado</p>
-      </article>
-
-      <article class="card stat-card">
-        <p class="eyebrow">AGUA ACTIVA</p>
-        <h2 id="stat-agua">—</h2>
-        <p class="muted">Tiempo acumulado con agua detectada</p>
-      </article>
-
-    </section>
-
-
-    <!-- ===================================================
-         SENSORES
-         =================================================== -->
-
-    <section class="card">
-
-      <h2>Sensores</h2>
-
-      <p class="muted">
-        Validez y obstrucción observada por cada sensor.
-      </p>
-
-
-      <div class="sensor-analysis">
-
-        <div class="sensor-analysis-row">
-
-          <div class="sensor-identity">
-            <span>Sensor 1</span>
-            <strong>Carril 1</strong>
-          </div>
-
-          <div class="sensor-metric">
-            <span>Tiempo con lectura válida</span>
-            <strong id="stat-sensor1">—</strong>
-          </div>
-
-          <div class="sensor-metric">
-            <span>Promedio</span>
-            <strong id="stat-c1-prom">—</strong>
-          </div>
-
-          <div class="sensor-metric">
-            <span>Máximo</span>
-            <strong id="stat-c1-max">—</strong>
-          </div>
-
-        </div>
-
-
-        <div class="sensor-analysis-row">
-
-          <div class="sensor-identity">
-            <span>Sensor 2</span>
-            <strong>Carril 2</strong>
-          </div>
-
-          <div class="sensor-metric">
-            <span>Tiempo con lectura válida</span>
-            <strong id="stat-sensor2">—</strong>
-          </div>
-
-          <div class="sensor-metric">
-            <span>Promedio</span>
-            <strong id="stat-c2-prom">—</strong>
-          </div>
-
-          <div class="sensor-metric">
-            <span>Máximo</span>
-            <strong id="stat-c2-max">—</strong>
-          </div>
-
-        </div>
-
+    <!-- ===================== MAPA ===================== -->
+    <div id="vista-mapa" class="view" hidden>
+      <div class="map-layout">
+        <section class="panel map-panel">
+          <header class="panel-head">
+            <div>
+              <h2>Mapa</h2>
+            </div>
+            <div class="legend">
+              <span><i class="sw sw-ok"></i>Habilitado</span>
+              <span><i class="sw sw-warn"></i>Precaución</span>
+              <span><i class="sw sw-crit"></i>Cerrado</span>
+              <span><i class="sw sw-unknown"></i>Sin confirmar</span>
+            </div>
+          </header>
+          <div id="mapa-caba" class="map"></div>
+          <p class="map-note">Esquemático, límites aproximados</p>
+        </section>
+        <section class="panel map-side">
+          <header class="panel-head">
+            <div>
+              <h2>Estado actual</h2>
+              <p id="mapa-estado" class="panel-sub"></p>
+            </div>
+          </header>
+          <div id="mapa-lista" class="map-list"></div>
+          <p id="mapa-sin-ubicacion" class="map-note"></p>
+        </section>
       </div>
+    </div>
 
-    </section>
+  </main>
+</div>
 
+<!-- ===================== MODAL: NUEVO PASO ===================== -->
+<dialog id="modal-nuevo-tunel" class="modal">
+  <header class="modal-head">
+    <h3>Agregar paso a nivel</h3>
+    <button id="btn-cerrar-modal-tunel" type="button" class="btn btn-icon btn-ghost" aria-label="Cerrar">
+      <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"></path></svg>
+    </button>
+  </header>
 
-    <!-- ===================================================
-         COMUNICACIÓN
-         =================================================== -->
-
-    <section class="card">
-
-      <h2>Comunicación y continuidad</h2>
-
-      <p class="muted">
-        Diferencia entre el momento de medición y la recepción en el servidor.
-      </p>
-
-
-      <div class="communication-grid">
-
-        <div class="communication-metric">
-          <span>Tiempo monitoreado</span>
-          <strong id="stat-monitoreado">—</strong>
-        </div>
-
-        <div class="communication-metric">
-          <span>Demora promedio</span>
-          <strong id="stat-delay-prom">—</strong>
-        </div>
-
-        <div class="communication-metric">
-          <span>Demora máxima</span>
-          <strong id="stat-delay-max">—</strong>
-        </div>
-
-        <div class="communication-metric">
-          <span>Saltos de secuencia</span>
-          <strong id="stat-gaps">—</strong>
-        </div>
-
-        <div class="communication-metric">
-          <span>Eventos sin hora medida</span>
-          <strong id="stat-sin-fecha">—</strong>
-        </div>
-
+  <div id="modal-nuevo-tunel-cuerpo">
+    <p class="modal-help">Se genera una clave exclusiva para su ESP32, asociada a este paso. Los campos opcionales se pueden dejar vacíos.</p>
+    <form id="form-crear-tunel" class="form">
+      <label class="field">
+        <span>Nombre del paso</span>
+        <input type="text" id="nuevo-tunel-nombre" placeholder="Ej: Paso San Martín" required maxlength="60">
+      </label>
+      <label class="field">
+        <span>Ubicación <em>opcional</em></span>
+        <input type="text" id="nuevo-tunel-ubicacion" placeholder="Ej: Av. Libertador y vías, Km 12" maxlength="120">
+      </label>
+      <div class="field">
+        <span>Ubicación en el mapa <em>opcional</em></span>
+        <div id="nuevo-tunel-mapa" class="map map-picker"></div>
+        <p id="nuevo-tunel-coords" class="picker-note">Hacé click en el mapa para marcar dónde está el paso.</p>
       </div>
-
-    </section>
-
-
-    <!-- ===================================================
-         CÓDIGOS
-         =================================================== -->
-
-    <section class="card">
-
-      <h2>Distribución por código</h2>
-
-      <p class="muted">
-        Tiempo y proporción en que estuvo cada código. Cada aviso cuenta hasta 15 s si no llega otro; después no se suma tiempo a ningún estado.
-      </p>
-
-      <div
-        id="stats-codigos"
-        class="bar-list"
-      >
-        <p class="muted">Sin datos todavía.</p>
-      </div>
-
-    </section>
-
-
-    <!-- ===================================================
-         ACTIVIDAD
-         =================================================== -->
-
-    <section class="card">
-
-      <div class="chart-heading">
-
-        <div>
-          <h2>Actividad</h2>
-
-          <p class="muted">
-            Cantidad de eventos generados por intervalo.
-          </p>
+      <details class="advanced">
+        <summary>Opciones avanzadas</summary>
+        <div class="field-pair">
+          <label class="field">
+            <span>Latitud</span>
+            <input type="number" id="nuevo-tunel-latitud" placeholder="-34.6037" step="any" min="-90" max="90">
+          </label>
+          <label class="field">
+            <span>Longitud</span>
+            <input type="number" id="nuevo-tunel-longitud" placeholder="-58.3816" step="any" min="-180" max="180">
+          </label>
         </div>
-
-        <span
-          id="actividad-resolucion"
-          class="chart-resolution"
-        >
-          —
-        </span>
-
+        <label class="field">
+          <span>ID del paso</span>
+          <input type="text" id="nuevo-tunel-paso-id" placeholder="tunel-03 (automático)" maxlength="80">
+        </label>
+        <label class="field">
+          <span>ID del dispositivo ESP32</span>
+          <input type="text" id="nuevo-tunel-dispositivo-id" placeholder="esp32-03 (automático)" maxlength="80">
+        </label>
+      </details>
+      <p id="modal-nuevo-tunel-error" class="form-error oculto"></p>
+      <div class="modal-actions">
+        <button id="btn-cancelar-modal-tunel" type="button" class="btn">Cancelar</button>
+        <button type="submit" id="btn-submit-crear-tunel" class="btn btn-primary">Crear paso a nivel</button>
       </div>
-
-
-      <div
-        id="stats-actividad"
-        class="chart-box"
-      >
-        <p class="muted">Sin datos todavía.</p>
-      </div>
-
-
-      <p
-        id="stats-actividad-detalle"
-        class="chart-selection"
-      >
-        Pasá el mouse o hacé click sobre una barra para ver el intervalo.
-      </p>
-
-    </section>
-
-
-    <!-- ===================================================
-         OBSTRUCCIÓN
-         =================================================== -->
-
-    <section class="card">
-
-      <h2>Obstrucción por carril</h2>
-
-      <p class="muted">
-        Evolución de las mediciones válidas dentro del rango seleccionado.
-      </p>
-
-      <div
-        id="stats-obstruccion"
-        class="chart-box"
-      >
-        <p class="muted">Sin datos todavía.</p>
-      </div>
-
-
-      <div class="chart-legend">
-
-        <span>
-          <i class="legend-c1"></i>
-          Carril 1
-        </span>
-
-        <span>
-          <i class="legend-c2"></i>
-          Carril 2
-        </span>
-
-      </div>
-
-    </section>
-
+    </form>
   </div>
 
-
-  <!-- =====================================================
-       MODAL: AGREGAR NUEVO PASO A NIVEL
-       ===================================================== -->
-
-  <dialog id="modal-nuevo-tunel" class="modal-card">
-
-    <div class="section-head modal-cabecera">
-      <h3>Agregar nuevo paso a nivel</h3>
-      <button id="btn-cerrar-modal-tunel" type="button" class="secondary modal-cerrar" aria-label="Cerrar">Cerrar</button>
+  <div id="modal-nuevo-tunel-resultado" class="oculto">
+    <p class="modal-success">Paso a nivel creado</p>
+    <p class="modal-help">Copiá y guardá esta <strong>clave de dispositivo</strong> para el firmware del ESP32. <strong>No se vuelve a mostrar.</strong> Si la perdés, generá una nueva.</p>
+    <div class="key-box">
+      <code id="nuevo-tunel-key-val"></code>
+      <button type="button" class="btn" id="btn-copiar-nueva-key">Copiar</button>
     </div>
-
-    <div id="modal-nuevo-tunel-cuerpo">
-      <p class="muted modal-ayuda">
-        Registrá un paso a nivel (túnel). Se genera una clave exclusiva para su ESP32, asociada a esta ubicación. Los campos opcionales se pueden dejar vacíos.
-      </p>
-
-      <form id="form-crear-tunel" class="form-tunel">
-        <label class="campo">
-          <span>Nombre del paso</span>
-          <input type="text" id="nuevo-tunel-nombre" placeholder="Ej: Paso San Martín"  required maxlength="60">
-        </label>
-        <label class="campo">
-          <span>Ubicación (opcional)</span>
-          <input type="text" id="nuevo-tunel-ubicacion" placeholder="Ej: Av. Libertador y vías, Km 12" maxlength="120" >
-        </label>
-        <div class="campo-par">
-        <label class="campo">
-          <span>Latitud (opcional)</span>
-          <input type="number" id="nuevo-tunel-latitud" placeholder="-34.6037" step="any" min="-90" max="90" >
-        </label>
-        <label class="campo">
-          <span>Longitud (opcional)</span>
-          <input type="number" id="nuevo-tunel-longitud" placeholder="-58.3816" step="any" min="-180" max="180" >
-        </label>
-        </div>
-
-        <details class="campo-avanzado">
-          <summary>Opciones avanzadas</summary>
-        <label class="campo">
-          <span>ID del paso</span>
-          <input type="text" id="nuevo-tunel-paso-id" placeholder="tunel-03 (automático)" maxlength="80" >
-        </label>
-        <label class="campo">
-          <span>ID del dispositivo ESP32</span>
-          <input type="text" id="nuevo-tunel-dispositivo-id" placeholder="esp32-03 (automático)" maxlength="80" >
-        </label>
-        </details>
-
-        <p id="modal-nuevo-tunel-error" class="error oculto"></p>
-
-        <div class="modal-acciones">
-          <button id="btn-cancelar-modal-tunel" type="button" class="secondary">Cancelar</button>
-          <button type="submit" id="btn-submit-crear-tunel">Crear paso a nivel</button>
-        </div>
-      </form>
+    <div class="modal-actions">
+      <button type="button" id="btn-finalizar-crear-tunel" class="btn btn-primary">Listo, ver paso</button>
     </div>
-
-    <div id="modal-nuevo-tunel-resultado" class="oculto">
-      <p class="modal-exito">Paso a nivel creado</p>
-      <p class="muted modal-ayuda">
-        Copiá y guardá esta <strong>clave de dispositivo</strong> para el firmware del ESP32. <strong>No se vuelve a mostrar.</strong> Si la perdés, generá una nueva.
-      </p>
-
-      <div class="key-box">
-        <code id="nuevo-tunel-key-val"></code>
-        <button type="button" class="secondary btn-copy" id="btn-copiar-nueva-key">Copiar</button>
-      </div>
-
-      <div class="modal-acciones">
-        <button type="button" id="btn-finalizar-crear-tunel">Listo, ver túnel</button>
-      </div>
-    </div>
-
-  </dialog>
-
-
-  <footer>
-
-    <p>
-      Actualización cada 15 segundos.
-      Se pausa al ocultar esta pestaña.
-    </p>
-
-    <p>
-      La señalización física depende del ESP32.
-      Un estado antiguo, desconocido o sin conexión no confirma que el paso esté habilitado.
-    </p>
-
-  </footer>
-
-</main>
+  </div>
+</dialog>
 
 </body>
 </html>

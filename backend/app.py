@@ -99,6 +99,10 @@ def create_app(config=None):
         DEVICE_KEY=os.environ.get("ALERTAR_DEVICE_KEY", ""),
         RATE_LIMIT_ENABLED=True,
         ENABLE_SIMULATOR=os.environ.get("ALERTAR_ENABLE_SIMULATOR", "0") == "1",
+        # SOLO PARA LA DEMO: guarda también la clave de cada dispositivo para mostrarla en el
+        # panel (columna tuneles.clave_demo). La autenticación sigue usando únicamente el hash.
+        # Antes de un uso real, desactivar con ALERTAR_DEMO_CLAVES=0 y vaciar esa columna.
+        DEMO_GUARDAR_CLAVES=os.environ.get("ALERTAR_DEMO_CLAVES", "1") == "1",
         SESSION_COOKIE_SECURE=os.environ.get("ALERTAR_REQUIRE_AUTH", "0") == "1",
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Strict",
@@ -145,7 +149,8 @@ def create_app(config=None):
             );
         """)
         columnas = {r["name"] for r in connection.execute("PRAGMA table_info(tuneles)")}
-        for nombre, tipo in (("ubicacion", "TEXT"), ("latitud", "REAL"), ("longitud", "REAL")):
+        # clave_demo: copia de la clave del dispositivo, solo para la demo (ver DEMO_GUARDAR_CLAVES).
+        for nombre, tipo in (("ubicacion", "TEXT"), ("latitud", "REAL"), ("longitud", "REAL"), ("clave_demo", "TEXT")):
             if nombre not in columnas:
                 connection.execute(f"ALTER TABLE tuneles ADD COLUMN {nombre} {tipo}")
         # Migra claves guardadas en claro por versiones anteriores.

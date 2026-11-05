@@ -2141,8 +2141,25 @@ function actualizarHeaderTunel() {
   renderDispositivo();
 }
 
-/* Datos del dispositivo al pie de Monitoreo. */
-function renderDispositivo() {
+/* Datos del dispositivo al pie de Monitoreo.
+   SOLO PARA LA DEMO: la clave se lee de /api/tuneles/<paso>/clave (ver DEMO_GUARDAR_CLAVES en app.py). */
+const clavesDemo = new Map();
+let claveVisible = false;
+
+function mostrarClave() {
+  const clave = clavesDemo.get(currentTunnel);
+  const code = $("disp-clave");
+  const tiene = typeof clave === "string" && clave.length > 0;
+  $("disp-clave-ver").hidden = !tiene;
+  $("disp-clave-copiar").hidden = !tiene;
+  if (clave === undefined) code.textContent = "Consultando…";
+  else if (!tiene) code.textContent = "No disponible (creado antes de guardar claves)";
+  else code.textContent = claveVisible ? clave : "•".repeat(Math.min(clave.length, 32));
+  code.classList.toggle("muted", !tiene || !claveVisible);
+  $("disp-clave-ver").textContent = claveVisible ? "Ocultar" : "Mostrar";
+}
+
+async function renderDispositivo() {
   const t = tunnelsList.find(x => x.paso_id === currentTunnel);
   $("disp-paso").textContent = t ? t.paso_id : "—";
   $("disp-id").textContent = t ? t.dispositivo_id : "—";
@@ -2150,6 +2167,18 @@ function renderDispositivo() {
     ? `${Number(t.latitud).toFixed(6)}, ${Number(t.longitud).toFixed(6)}`
     : "Sin coordenadas";
   $("disp-url").textContent = `${location.origin}/api/eventos`;
+  claveVisible = false;
+  mostrarClave();
+  if (!t || clavesDemo.has(t.paso_id)) return;
+  const paso = t.paso_id;
+  try {
+    const r = await fetch(`/api/tuneles/${encodeURIComponent(paso)}/clave`, { cache: "no-store" });
+    clavesDemo.set(paso, r.ok ? (await r.json()).clave || "" : "");
+  } catch (e) {
+    console.error(e);
+    clavesDemo.set(paso, "");
+  }
+  if (paso === currentTunnel) mostrarClave();
 }
 
 function paintSiteDots() {
@@ -2828,6 +2857,20 @@ async function crearNuevoTunel(nombre, pasoId, dispId, ubicacion, latitud, longi
 }
 
 function initMultiTunelListeners() {
+  $("disp-clave-ver").addEventListener("click", () => {
+    claveVisible = !claveVisible;
+    mostrarClave();
+  });
+  const copiar = $("disp-clave-copiar");
+  copiar.addEventListener("click", () => {
+    const clave = clavesDemo.get(currentTunnel);
+    if (!clave) return;
+    navigator.clipboard.writeText(clave).then(() => {
+      copiar.textContent = "Copiada";
+      setTimeout(() => { copiar.textContent = "Copiar"; }, 2000);
+    });
+  });
+
   $("btn-nuevo-tunel-top").addEventListener("click", abrirModalNuevoTunel);
   $("btn-cerrar-modal-tunel").addEventListener("click", cerrarModalNuevoTunel);
   $("btn-cancelar-modal-tunel").addEventListener("click", cerrarModalNuevoTunel);

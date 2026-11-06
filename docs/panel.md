@@ -46,7 +46,12 @@ Cada 10 s el panel consulta `/api/tuneles`, que en un solo pedido devuelve el ú
 
 ## Historial
 
-Registros paginados (10 a 200 por página) con medición, recepción, código, diagnóstico, agua, carriles y secuencia; cada fila abre su JSON completo. La exportación descarga la página actual, los últimos N o todos los registros en CSV o JSON. Para *todos*, el panel pide el historial en bloques de 200, espaciados a unos 3 por segundo después de los primeros, y respeta `Retry-After` si el servidor responde 429.
+Registros paginados (10 a 200 por página, de la secuencia más alta a la más baja) con medición, recepción, código, diagnóstico, agua, carriles y secuencia; cada fila abre su JSON completo.
+
+**Exportación** en CSV (con BOM para que Excel respete los acentos) o JSON:
+
+- *Página actual*: la arma el navegador con los registros que ya tiene cargados.
+- *Últimas 24 horas*, *7 días*, *30 días*, *Todo el historial* o *Rango de fechas* (desde y hasta, en hora local): el panel abre `GET /api/pasos/<paso>/exportar` y el navegador descarga el archivo con su propio indicador de progreso. El servidor lo genera fila por fila y lo envía por partes, así que no importa cuántos registros haya: 84.000 registros (19 MB de CSV) tardan unos 3 s y el servicio no carga el archivo entero en memoria. Las fechas se comparan con la fecha de medición (o la de recepción si el evento no tiene hora).
 
 ## Estadísticas
 
@@ -71,4 +76,4 @@ La pestaña Mapa dibuja un mapa esquemático de la Ciudad de Buenos Aires en SVG
 
 ## Límites y concurrencia
 
-El servidor limita el ritmo de pedidos por tipo (ingesta, lectura, administración y login) con cubetas globales por proceso y atiende hasta 16 pedidos a la vez. Los valores, sus variables de entorno y los de la Raspberry Pi están en [backend/README.md](backend/README.md). Con los valores por defecto, 20 paneles abiertos y 10 ESP32 enviando su cola al mismo tiempo no reciben rechazos.
+El servidor limita el ritmo de pedidos por tipo (ingesta, lectura, administración y login) con cubetas globales por proceso y atiende hasta 16 pedidos a la vez. Los valores, sus variables de entorno y los de la Raspberry Pi están en [api.md](api.md#límites-de-ritmo). Con los valores por defecto, 20 paneles abiertos y 10 ESP32 enviando su cola al mismo tiempo no reciben rechazos.

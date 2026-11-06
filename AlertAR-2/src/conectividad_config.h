@@ -16,8 +16,9 @@
 #endif
 // Intervalo entre mediciones enviadas al servidor cuando no hay cambios de estado.
 // Un cambio de estado se envía siempre en el momento.
+// SOLO PARA LA DEMO: 5 s para la presentación; en main son 15 s.
 #ifndef ALERTAR_MUESTRA_MS
-#define ALERTAR_MUESTRA_MS 15000
+#define ALERTAR_MUESTRA_MS 5000
 #endif
 
 namespace conexion_config {

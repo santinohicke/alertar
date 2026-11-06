@@ -8,6 +8,7 @@ void observar(const alertar::Estado &, const alertar::Carril &, const alertar::C
               const alertar::Agua &);
 // JSON de diagnóstico separado, imprimido exclusivamente desde el loop.
 void informar();
-// Controles de ensayo por serie: '0' corta Wi-Fi, '1' reconecta, 'r' reinicia.
+// Controles de ensayo por serie: "/wifi off", "/wifi on", "/reintentar" (desbloquea tras un
+// error permanente) y "/reiniciar".
 void comandos();
 }

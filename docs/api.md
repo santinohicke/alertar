@@ -8,6 +8,7 @@ La API está en `backend/app.py` (contrato, ingesta, estado e historial) y `back
 |---|---|---|---|
 | `GET` | `/health` | Cualquiera | Comprueba que el servicio y la base respondan |
 | `POST` | `/api/eventos` | Clave del dispositivo o administrativa | Recibir un evento |
+| `POST` | `/api/eventos/lote` | Clave del dispositivo o administrativa | Recibir de 1 a 10 eventos en un pedido |
 | `POST` | `/api/dispositivos/{dispositivo_id}/reserva` | Clave del dispositivo o administrativa | Reservar un rango de secuencias para una instalación de firmware |
 | `GET` | `/api/pasos/{paso_id}/estado` | Panel o administrativa | Último estado conocido y su vigencia |
 | `GET` | `/api/pasos/{paso_id}/historial` | Panel o administrativa | Eventos paginados (`limite` 1–200, `offset`) |
@@ -55,6 +56,14 @@ El servidor agrega `recibido_en` (hora UTC del servidor al guardar). La hora de 
 6. **Duplicados:** si el mismo `evento_id` ya existe con exactamente el mismo contenido, responde `200` con `duplicado: true` y la fecha de recepción original. No se inserta de nuevo.
 7. **Conflictos:** si el `evento_id` o la `secuencia` ya existen con otro contenido → 409. El ESP32 no debe descartarlo: indica un error del emisor.
 8. **Fallo de almacenamiento** → 503 sin ACK; el ESP32 reintenta.
+
+## Lotes
+
+`POST /api/eventos/lote` recibe `{"eventos": [...]}` con 1 a 10 eventos del mismo contrato; el firmware manda hasta 9 para vaciar pendientes rápido. Cada evento pasa por los mismos pasos que en `/api/eventos` (validación, pertenencia, guardado, duplicados, conflictos) y se guarda en su propia transacción: uno inválido no frena al resto. Un cuerpo que no sea `{"eventos": [...]}`, una lista vacía o más de 10 eventos → 400 `lote_invalido`.
+
+La respuesta es `200 {"resultados": [...]}`, con un resultado por evento y en el mismo orden. Cada uno trae `estado` (el código que habría dado `/api/eventos`: 201, 200, 400, 403 o 409) y el resto de esa respuesta, por ejemplo `{"estado": 201, "guardado": true, "duplicado": false, "evento_id": "…", "recibido_en": "…"}`. Un fallo de la base responde 503 para todo el pedido; los eventos que ya se guardaron se reconocen como duplicados al reintentar.
+
+El lote cuenta como un solo pedido para el límite de ingesta. El orden de llegada no importa: el estado del paso es el de mayor `secuencia` y el historial se ordena por `secuencia`.
 
 ## Reserva de secuencias
 

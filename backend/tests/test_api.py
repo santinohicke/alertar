@@ -88,6 +88,29 @@ class ApiTests(unittest.TestCase):
             self.assertEqual(self.client.post("/api/eventos", data=json.dumps(body), content_type="application/json").status_code, 400)
         self.assertEqual(self.client.get("/api/pasos/tunel-01/historial").json["total"], 0)
 
+    def lote(self, eventos):
+        return self.client.post("/api/eventos/lote", json={"eventos": eventos})
+
+    def test_batch_saves_each_event_and_reports_individually(self):
+        e = lambda s, **c: {**self.event, "evento_id": f"esp32-01-{s}", "secuencia": s, **c}
+        self.assertEqual(self.post(**e(2)).status_code, 201)
+        r = self.lote([e(9), e(2), e(3, codigo="NADA"), e(4), e(2, diagnostico="otro")])
+        self.assertEqual(r.status_code, 200)
+        estados = [x["estado"] for x in r.json["resultados"]]
+        self.assertEqual(estados, [201, 200, 400, 201, 409])
+        self.assertTrue(r.json["resultados"][1]["duplicado"])
+        self.assertEqual(r.json["resultados"][0]["evento_id"], "esp32-01-9")
+        # El estado sigue mostrando el de mayor secuencia aunque el historial llegue después.
+        self.assertEqual(self.client.get("/api/pasos/tunel-01/estado").json["ultimo_estado_conocido"]["secuencia"], 9)
+        historial = self.client.get("/api/pasos/tunel-01/historial").json
+        self.assertEqual([x["secuencia"] for x in historial["eventos"]], [9, 4, 2])
+
+    def test_batch_limits(self):
+        for body in ({}, {"eventos": []}, {"eventos": [self.event] * 11}, {"eventos": self.event},
+                     {"eventos": [self.event], "extra": 1}, [self.event]):
+            self.assertEqual(self.client.post("/api/eventos/lote", json=body).status_code, 400, body)
+        self.assertEqual(self.client.post("/api/eventos/lote", data="x").status_code, 415)
+
     def test_invalid_sensor_null_is_accepted(self):
         self.assertEqual(self.post(sensor1_valido=False, obstruccion_carril1_cm=None, codigo="ERR-003").status_code, 201)
 

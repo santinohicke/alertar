@@ -111,6 +111,16 @@ class TunelesTests(PanelTests):
         ajeno = self.client.post("/api/eventos", headers=key, json=self.evento("tunel-01", "esp32-01"))
         self.assertEqual(ajeno.status_code, 403)
 
+    def test_batch_uses_device_key_per_event(self):
+        datos = self.crear().json
+        key = {"X-API-Key": datos["api_key"]}
+        propio = self.evento(datos["paso_id"], datos["dispositivo_id"])
+        ajeno = self.evento("tunel-01", "esp32-01")
+        r = self.client.post("/api/eventos/lote", headers=key, json={"eventos": [propio, ajeno]})
+        self.assertEqual([x["estado"] for x in r.json["resultados"]], [201, 403])
+        sin_clave = self.client.post("/api/eventos/lote", json={"eventos": [propio]})
+        self.assertEqual(sin_clave.status_code, 401)
+
     def test_keys_stored_hashed_and_never_listed(self):
         clave = self.crear().json["api_key"]
         import sqlite3

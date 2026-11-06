@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <Wire.h>
+#include <string.h>
 #include <LiquidCrystal_I2C.h>
 
 // ============================================================
@@ -57,14 +58,6 @@ alertar::Carril carril1;
 alertar::Carril carril2;
 
 // ============================================================
-// ULTRASONIDO
-// ============================================================
-
-float leerDistanciaCm(int trig, int echo) {
-  return ultrasonido::leer(trig, echo);
-}
-
-// ============================================================
 // LCD
 // ============================================================
 
@@ -73,14 +66,17 @@ void mostrarLCD(
     const char *linea2
 ) {
 
-  static String anterior1 = "";
-  static String anterior2 = "";
+  // Los textos son literales del firmware: guardar el puntero alcanza
+  // y evita copias en el heap en cada ciclo.
+  static const char *anterior1 = nullptr;
+  static const char *anterior2 = nullptr;
 
   // No redibujar si no cambió nada.
   // Esto evita parpadeos y operaciones I2C innecesarias.
   if (
-      anterior1 == linea1 &&
-      anterior2 == linea2
+      anterior1 && anterior2 &&
+      strcmp(anterior1, linea1) == 0 &&
+      strcmp(anterior2, linea2) == 0
   ) {
     return;
   }
@@ -181,8 +177,9 @@ void enviarJSONSiCorresponde(
   static unsigned long ultimoEnvio = 0;
 
   // Estado anterior enviado
-  static String ultimoCodigo = "";
-  static String ultimoDiagnostico = "";
+  // Literales de alertar::decidir(): se comparan con strcmp, sin copiar.
+  static const char *ultimoCodigo = "";
+  static const char *ultimoDiagnostico = "";
 
   static int ultimoColor = -1;
 
@@ -208,9 +205,9 @@ void enviarJSONSiCorresponde(
   const bool huboCambio =
       primerEnvio ||
 
-      ultimoCodigo != estado.codigo ||
+      strcmp(ultimoCodigo, estado.codigo) != 0 ||
 
-      ultimoDiagnostico != estado.diagnostico ||
+      strcmp(ultimoDiagnostico, estado.diagnostico) != 0 ||
 
       ultimoColor != (int)estado.color ||
 
@@ -285,23 +282,7 @@ void setup() {
 
   Serial.begin(115200);
 
-  // ==========================================================
-  // ULTRASONIDO 1
-  // ==========================================================
-
-  pinMode(TRIG1, OUTPUT);
-  pinMode(ECHO1, INPUT);
-
-  // ==========================================================
-  // ULTRASONIDO 2
-  // ==========================================================
-
-  pinMode(TRIG2, OUTPUT);
-  pinMode(ECHO2, INPUT);
-
-  // Mantener TRIG en LOW inicialmente
-  digitalWrite(TRIG1, LOW);
-  digitalWrite(TRIG2, LOW);
+  // Los pines de los ultrasonidos los configura ultrasonido::iniciar().
 
   // ==========================================================
   // SENSOR DE AGUA
@@ -355,7 +336,11 @@ void setup() {
       "Iniciando..."
   );
 
-  ultrasonido::iniciar(TRIG1, ECHO1, TRIG2, ECHO2);
+  // Si falla, las lecturas dan -1 y el sistema queda en ERR-003 (falla de sensor);
+  // esta línea deja asentado el motivo en el Serial.
+  if (!ultrasonido::iniciar(TRIG1, ECHO1, TRIG2, ECHO2)) {
+    Serial.println("{\"tipo\":\"error\",\"detalle\":\"no se pudieron iniciar los ultrasonidos\"}");
+  }
   if (conexion_config::HABILITADA) conectividad::iniciar();
 }
 
@@ -388,7 +373,7 @@ void loop() {
   // ==========================================================
 
   const float distancia1 =
-      leerDistanciaCm(
+      ultrasonido::leer(
           TRIG1,
           ECHO1
       );
@@ -407,7 +392,7 @@ void loop() {
   // ==========================================================
 
   const float distancia2 =
-      leerDistanciaCm(
+      ultrasonido::leer(
           TRIG2,
           ECHO2
       );

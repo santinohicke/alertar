@@ -24,7 +24,7 @@ El panel exige autenticación en producción. La clave administrativa queda en e
 
 ## Alcance comprobado y pendiente
 
-En noviembre de 2026 pasan 45 pruebas Python del backend (API, panel, estadísticas, borrado y límites). Con 252.000 eventos en el servidor, una prueba de carga de 20 paneles y 10 ESP32 durante 60 s no tuvo rechazos (detalle en [deploy/servidor/README.md](deploy/servidor/README.md)).
+En noviembre de 2026 pasan 44 pruebas Python del backend (API, panel, estadísticas, borrado y límites). Con 252.000 eventos en el servidor, una prueba de carga de 20 paneles y 10 ESP32 durante 60 s no tuvo rechazos (detalle en [deploy/servidor/README.md](deploy/servidor/README.md)).
 
 Antes de la primera publicación se aprobaron 21 pruebas Python, pruebas C++ de cola/protocolo y 2700 combinaciones de lógica, y se comprobó el panel publicado. El endpoint `/health` respondió HTTP 200 el 25/09/2026. Estas comprobaciones no certifican continuidad de la conexión Wokwi → HTTPS → Pi. Continúan pendientes la estabilidad de reenvío, el incidente de watchdog en un reinicio del simulador, los límites efectivos de memoria de la Pi y la validación física de sensores, actuadores y alimentación.
 

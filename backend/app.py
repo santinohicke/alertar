@@ -185,7 +185,9 @@ def create_app(config=None):
                                    (hash_clave(fila["api_key"]), fila["paso_id"]))
         tunel = connection.execute("SELECT paso_id FROM tuneles WHERE paso_id='tunel-01'").fetchone()
         if not tunel:
-            # Sin clave configurada se genera una aleatoria que nadie conoce; no hay claves por defecto.
+            # ALERTAR_DEVICE_KEY solo se usa aquí, al crear tunel-01 por primera vez. Después vale el
+            # hash guardado: regenerar la clave desde el panel la revoca. Sin variable se genera una
+            # clave aleatoria que nadie conoce; no hay claves por defecto.
             clave = app.config.get("DEVICE_KEY") or secrets.token_urlsafe(32)
             connection.execute(
                 "INSERT INTO tuneles (paso_id, nombre, dispositivo_id, api_key, creado_en) VALUES (?, ?, ?, ?, ?)",

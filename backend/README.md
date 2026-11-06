@@ -1,8 +1,8 @@
 # Backend y panel de AlertAR
 
-`app.py` implementa la API Flask y SQLite; `panel.py`, `templates/` y `static/` agregan el panel. En la Raspberry Pi, `../deploy/raspi/gateway.py` monta Flask junto a una API FastAPI anterior en un único proceso Uvicorn. Esa API anterior no está incluida en este repositorio.
+`app.py` implementa la API Flask y SQLite; `panel.py`, `templates/` y `static/` agregan el panel, la autenticación, los límites de ritmo y la gestión de pasos; `estadisticas.py` calcula los resúmenes de estadísticas. En el servidor se sirve con gunicorn ([../deploy/servidor/README.md](../deploy/servidor/README.md)). En la Raspberry Pi, `../deploy/raspi/gateway.py` monta Flask junto a una API FastAPI anterior en un único proceso Uvicorn; esa API anterior no está incluida en este repositorio. El funcionamiento del panel está en [../PANEL.md](../PANEL.md).
 
-El modo publicado usa `ALERTAR_REQUIRE_AUTH=1`, una clave administrativa y otra clave exclusiva de dispositivo para ingesta y reserva. Las claves se cargan desde el entorno privado del servidor; no están en el código ni en la plantilla del firmware. Ver [PANEL_RASPBERRY.md](../PANEL_RASPBERRY.md) y [CONECTIVIDAD.md](../CONECTIVIDAD.md) para arquitectura y límites conocidos.
+El modo publicado usa `ALERTAR_REQUIRE_AUTH=1`, una clave administrativa y otra clave exclusiva de dispositivo para ingesta y reserva. Las claves se cargan desde el entorno privado del servidor; no están en el código ni en la plantilla del firmware. Ver [PANEL.md](../PANEL.md) y [CONECTIVIDAD.md](../CONECTIVIDAD.md) para arquitectura y límites conocidos.
 
 ## Iniciar
 
@@ -17,7 +17,7 @@ cd backend
 
 La aplicación crea las tablas si no existen, sin borrar datos. SQLite se guarda en `backend/instance/alertar.sqlite3`, ignorada por Git.
 
-Este modo de desarrollo no exige autenticación y solo escucha en `127.0.0.1`. Wokwi puede acceder por `http://host.wokwi.internal:5001` con una configuración local adecuada. **No publicar este modo en Internet.** En la Pi se requiere `ALERTAR_REQUIRE_AUTH=1`, clave administrativa de al menos 24 caracteres y clave de dispositivo distinta. El panel usa sesión de lectura de ocho horas, cookie `Secure`/`HttpOnly`/`SameSite=Strict` y protección CSRF.
+Este modo de desarrollo no exige autenticación y solo escucha en `127.0.0.1`. Wokwi puede acceder por `http://host.wokwi.internal:5001` con una configuración local adecuada. **No publicar este modo en Internet.** En el servidor publicado se requiere `ALERTAR_REQUIRE_AUTH=1`, clave administrativa de al menos 24 caracteres y clave de dispositivo distinta. El panel usa sesión de lectura de ocho horas, cookie `Secure`/`HttpOnly`/`SameSite=Strict` y protección CSRF.
 
 ## Variables de entorno
 
@@ -31,7 +31,11 @@ Este modo de desarrollo no exige autenticación y solo escucha en `127.0.0.1`. W
 | `ALERTAR_CONCURRENCIA` | Pedidos atendidos a la vez (por defecto 16; la Pi usa 4). Conviene igualarlo a los hilos de gunicorn. |
 | `ALERTAR_ENABLE_SIMULATOR` | `1` habilita `/api/simulador/*` (solo para desarrollo; inserta eventos falsos). |
 
-Las claves de dispositivo se guardan como hash; la clave en claro solo se muestra al crearla o reemplazarla. Las escrituras de administración desde el panel exigen el encabezado `X-CSRF-Token`.
+Las claves de dispositivo se guardan como hash; la clave en claro solo se muestra al crearla o reemplazarla. Las escrituras de administración desde el panel (crear, editar, regenerar clave y borrar pasos) exigen el encabezado `X-CSRF-Token`.
+
+### Límites de ritmo
+
+Cada pedido a la API consume una ficha de una cubeta global del proceso según su tipo: **ingesta** (`POST` de eventos y reservas), **lectura** (`GET`), **admin** (gestión de pasos) y **login**. Cada cubeta se recarga a `ritmo` fichas por segundo hasta `ráfaga`. Sin fichas, la API responde 429 con `Retry-After: 5`, y el firmware y el panel esperan y reintentan sin descartar datos. Además, como máximo `ALERTAR_CONCURRENCIA` pedidos se atienden a la vez. Como los límites y la caché de estadísticas son por proceso, gunicorn debe usar un solo proceso (`--workers 1`) con varios hilos.
 
 ## Probar manualmente
 
@@ -78,7 +82,7 @@ Los identificadores admiten 1–80 letras ASCII, números, guion o guion bajo. L
 - Identidad o secuencia reutilizada con otro contenido: 409. No descartar el evento automáticamente; requiere corregir el emisor.
 - Datos inválidos: 400; contenido no JSON: 415; cuerpo excesivo: 413; fallo de almacenamiento: 503, sin ACK.
 - El estado selecciona la mayor secuencia del paso, incluso si llegan eventos antiguos después.
-- `comunicacion` usa la recepción de eventos nuevos: `recepcion_reciente` o `sin_comunicacion`, con umbral de 30 s. Repetir un duplicado no renueva esta señal.
+- `comunicacion` usa la recepción de eventos nuevos: `recepcion_reciente` o `sin_comunicacion`, con el mismo umbral de 60 s (`STALE_SECONDS`). Repetir un duplicado no renueva esta señal.
 - `actualidad_medicion` usa la fecha de medición: `reciente`, `desactualizada` o `desconocida`. Recibir un lote antiguo no lo vuelve actual. El umbral de 60 s se configura en `STALE_SECONDS`; el panel usa la misma tolerancia para que una pequeña desincronización no quite la vigencia antes de tiempo.
 - `ultimo_estado_conocido` siempre es un dato histórico identificado. No interpretar `OK-001` como habilitación vigente si la medición está desactualizada o su actualidad es desconocida.
 - Estado sin eventos: 404. Historial sin eventos: lista vacía. Historial ordenado por secuencia descendente; `limite` 1–200, `offset` no negativo.
@@ -90,4 +94,4 @@ cd backend
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
-Las pruebas usan bases temporales bajo `backend/.test-tmp`, sin alterar la base de uso normal. Cubren persistencia, contrato, duplicados, conflictos, actualidad, autenticación, separación de permisos, panel y límites de ritmo. No sustituyen la validación prolongada de Wokwi → HTTPS → Pi.
+Las pruebas usan bases temporales bajo `backend/.test-tmp`, sin alterar la base de uso normal. Son 45 y cubren persistencia, contrato, duplicados, conflictos, actualidad, autenticación, separación de permisos, panel, borrado con CSRF, cálculo y endpoint de estadísticas, y límites de ritmo (por defecto y desde el entorno). No sustituyen la validación prolongada de Wokwi → HTTPS → servidor.

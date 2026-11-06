@@ -211,13 +211,17 @@
             </select>
             <select id="export-cantidad" aria-label="Registros a exportar">
               <option value="pagina">Página actual</option>
-              <option value="10">Últimos 10</option>
-              <option value="25">Últimos 25</option>
-              <option value="50">Últimos 50</option>
-              <option value="100">Últimos 100</option>
-              <option value="200">Últimos 200</option>
-              <option value="todos">Todos los registros</option>
+              <option value="24h" selected>Últimas 24 horas</option>
+              <option value="7d">Últimos 7 días</option>
+              <option value="30d">Últimos 30 días</option>
+              <option value="todos">Todo el historial</option>
+              <option value="fechas">Rango de fechas…</option>
             </select>
+            <span id="export-fechas" class="export-fechas" hidden>
+              <input id="export-desde" type="date" aria-label="Desde">
+              <span class="export-a">a</span>
+              <input id="export-hasta" type="date" aria-label="Hasta">
+            </span>
             <button id="exportar" class="btn" type="button">
               <svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8M4.5 6.5 8 10l3.5-3.5M3 13h10"></path></svg>
               Descargar

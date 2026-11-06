@@ -69,6 +69,21 @@ class Cola {
     archivo = indice.front();
     return disco.leer("/pendientes/" + archivo, json);
   }
+  // Lote de hasta `maximo` registros: primero el más nuevo (el panel muestra el
+  // estado actual con el primer envío) y después los más viejos, en orden, para
+  // ir completando el historial. Devuelve false si algún registro no se pudo leer.
+  bool lote(size_t maximo, std::vector<std::string> &archivos, std::vector<std::string> &jsons) {
+    cargar();
+    archivos.clear(); jsons.clear();
+    if (indice.empty() || maximo == 0) return false;
+    archivos.push_back(indice.back());
+    for (size_t i = 0; archivos.size() < maximo && i + 1 < indice.size(); ++i)
+      archivos.push_back(indice[i]);
+    jsons.resize(archivos.size());
+    for (size_t i = 0; i < archivos.size(); ++i)
+      if (!disco.leer("/pendientes/" + archivos[i], jsons[i])) return false;
+    return true;
+  }
   bool confirmar(const std::string &archivo) {
     cargar();
     if (!esLog(archivo) || !std::binary_search(indice.begin(), indice.end(), archivo)) return false;

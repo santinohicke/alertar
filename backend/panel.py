@@ -103,7 +103,7 @@ def registrar_panel(app, db, estado, record):
                 # regenerarla desde el panel revoca la anterior, incluida la inicial de tunel-01.
                 tunel_auth = db().execute("SELECT * FROM tuneles WHERE api_key = ?", (hash_clave(key),)).fetchone()
 
-            ruta_ingesta = request.endpoint in ("receive", "reserve")
+            ruta_ingesta = request.endpoint in ("receive", "receive_lote", "reserve")
             if es_master:
                 g.es_master = True
             elif tunel_auth and escritura and ruta_ingesta:

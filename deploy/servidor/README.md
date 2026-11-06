@@ -40,7 +40,7 @@ Los límites de ritmo y la concurrencia usan los valores por defecto del código
 
 ## Rama a desplegar
 
-Para uso real se despliega `main`. Para presentaciones se puede desplegar `demo`, que además guarda y muestra la clave de cada dispositivo. Al volver a `main`, vaciar esa copia con `UPDATE tuneles SET clave_demo = NULL`.
+Para uso real se despliega `main`. Para presentaciones se puede desplegar `demo` (herramientas en [deploy/demo/README.md](../demo/README.md)), que además guarda y muestra la clave de cada dispositivo. Al volver a `main`, vaciar esa copia con `UPDATE tuneles SET clave_demo = NULL`.
 
 ## Capacidad medida
 

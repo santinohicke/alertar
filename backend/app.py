@@ -171,9 +171,8 @@ def create_app(config=None):
                 longitud REAL
             );
         """)
-        # Índices para estado, historial y estadísticas por paso (se crean una sola vez).
-        connection.execute("CREATE INDEX IF NOT EXISTS eventos_paso_secuencia ON eventos(paso_id, secuencia)")
-        connection.execute("CREATE INDEX IF NOT EXISTS eventos_paso_recibido ON eventos(paso_id, recibido_en)")
+        # Duplicado de eventos_paso_recepcion creado por una versión anterior.
+        connection.execute("DROP INDEX IF EXISTS eventos_paso_recibido")
         columnas = {r["name"] for r in connection.execute("PRAGMA table_info(tuneles)")}
         # clave_demo: copia de la clave del dispositivo, solo para la demo (ver DEMO_GUARDAR_CLAVES).
         for nombre, tipo in (("ubicacion", "TEXT"), ("latitud", "REAL"), ("longitud", "REAL"), ("clave_demo", "TEXT")):

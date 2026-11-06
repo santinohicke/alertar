@@ -15,6 +15,15 @@ El repositorio contiene el firmware, el circuito de simulación, el backend Flas
 
 Los cambios del proyecto entran a `main` por pull request y después se integran en `demo` (nunca al revés).
 
+### Esta rama: `demo`
+
+Además de todo lo de `main`:
+
+- **Clave visible de cada dispositivo.** Al crear un paso o regenerar su clave, el servidor guarda también una copia en `tuneles.clave_demo` y el panel la muestra al pie de Monitoreo → Dispositivo, oculta hasta pulsar *Mostrar*, con botón para copiarla. La autenticación sigue usando solo el hash. Se desactiva con `ALERTAR_DEMO_CLAVES=0`. Los pasos creados antes de este cambio muestran "No disponible".
+- **Pasos de demo y scripts** para generar historial artificial y medir carga: ver [deploy/demo/README.md](deploy/demo/README.md).
+
+Para volver al proyecto real: desplegar `main` y vaciar `clave_demo`.
+
 ## Cómo funciona
 
 ```text
@@ -64,6 +73,7 @@ El backend de `backend/` valida el contrato JSON, autentica la ingesta, evita du
 | `PATCH` | `/api/tuneles/{id}` | Editar nombre, ubicación y coordenadas |
 | `POST` | `/api/tuneles/{id}/clave` | Reemplazar la clave de dispositivo (la anterior deja de valer) |
 | `DELETE` | `/api/tuneles/{id}` | Borrar un paso, su clave, sus eventos y sus reservas (`tunel-01` no se borra) |
+| `GET` | `/api/tuneles/{id}/clave` | **Solo `demo`.** Clave guardada del dispositivo, para el panel (sesión o clave administrativa) |
 
 ### Panel web
 
@@ -75,7 +85,7 @@ El servicio publicado corre en un servidor Linux con gunicorn (un proceso, 16 hi
 
 ### Varios pasos y claves por dispositivo
 
-Cada paso tiene su propio `paso_id`, `dispositivo_id`, nombre, ubicación, coordenadas y clave de dispositivo. La clave se genera al crear el paso desde **Agregar paso a nivel** en el panel, donde la ubicación se marca tocando el mapa (las coordenadas exactas están en *Opciones avanzadas*). Se muestra una sola vez y se guarda solo como hash. Una clave únicamente puede enviar datos de su paso; con otro `paso_id` o `dispositivo_id` el servidor responde 403. Un paso se borra desde el pie del panel **Dispositivo**, con confirmación.
+Cada paso tiene su propio `paso_id`, `dispositivo_id`, nombre, ubicación, coordenadas y clave de dispositivo. La clave se genera al crear el paso desde **Agregar paso a nivel** en el panel, donde la ubicación se marca tocando el mapa (las coordenadas exactas están en *Opciones avanzadas*). En `main` se muestra una sola vez y se guarda solo como hash; en esta rama también queda visible en el panel. Una clave únicamente puede enviar datos de su paso; con otro `paso_id` o `dispositivo_id` el servidor responde 403. Un paso se borra desde el pie del panel **Dispositivo**, con confirmación.
 
 Para sumar un ESP32: crear el paso en el panel, copiar la clave, y en el firmware poner esa clave en `conectividad_secrets.h`, el `dispositivo_id` en la URL de reserva y los IDs en `DISPOSITIVO` y `PASO` de `src/conectividad_config.h`. Hay que volver a compilar antes de iniciar el simulador.
 
@@ -120,6 +130,7 @@ backend/
 ├── simulador.py                 simulador por línea de comandos
 └── tests/                       pruebas de API, panel, estadísticas y límites
 deploy/servidor/                 despliegue en servidor (systemd + gunicorn)
+deploy/demo/                     solo demo: historial artificial y prueba de carga
 deploy/raspi/                    despliegue en la Raspberry Pi y watchdog de Tailscale
 tabla_logica.md                  tabla funcional de estados
 PANEL.md                         funcionamiento del panel
@@ -140,4 +151,4 @@ Para ejecutar la API en desarrollo local, ver [backend/README.md](backend/README
 ## Pruebas
 
 - `tests/`: lógica de estados, cola y contrato del firmware (C++).
-- `backend/tests/`: 45 pruebas de API, panel, autenticación, estadísticas, borrado y límites de ritmo (`.venv/bin/python -m unittest discover -s tests` desde `backend/`).
+- `backend/tests/`: 46 pruebas (44 de `main` más 2 de las claves de la demo) de API, panel, autenticación, estadísticas, borrado y límites de ritmo (`.venv/bin/python -m unittest discover -s tests` desde `backend/`).

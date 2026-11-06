@@ -69,7 +69,7 @@ Los identificadores admiten 1–80 letras ASCII, números, guion o guion bajo. L
 
 ## Estadísticas
 
-`GET /api/pasos/<paso_id>/estadisticas?rango=1h|6h|24h|7d|all` devuelve un resumen calculado en el servidor: totales, tiempo por código (cada evento cuenta hasta 15 s o hasta el siguiente), bloques de actividad con el tiempo por severidad, la franja de estado y una serie de obstrucción reducida a 600 puntos que conserva el máximo de cada bloque. El panel ya no descarga el historial completo para esta vista. El resultado se guarda 10 s en memoria para que varios paneles compartan el cálculo.
+`GET /api/pasos/<paso_id>/estadisticas?rango=1h|6h|24h|7d|all` devuelve un resumen calculado en el servidor: totales, tiempo por código (cada evento cuenta hasta 15 s o hasta el siguiente), bloques de actividad con el tiempo por severidad, la franja de estado y una serie de obstrucción reducida a 600 puntos que conserva el máximo de cada bloque. El panel ya no descarga el historial completo para esta vista. El resultado se guarda 10 s en memoria para que varios paneles compartan el cálculo. Usa el índice `eventos_paso_recepcion` para filtrar por rango.
 
 ## Entrega, orden y actualidad
 

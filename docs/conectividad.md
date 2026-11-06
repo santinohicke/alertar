@@ -89,4 +89,4 @@ Cada 10 s el ESP32 imprime una línea JSON de diagnóstico con el estado de la c
 ## Limitaciones conocidas
 
 - Wokwi puede recrear la flash al iniciar una sesión nueva: se pierden los pendientes que no se hayan enviado, aunque la reserva evita reutilizar secuencias.
-- La continuidad prolongada Wokwi → HTTPS → servidor y el comportamiento en hardware real no están validados formalmente. Ver [estado.md](estado.md).
+- El comportamiento en hardware real no está validado. Ver [estado.md](estado.md).

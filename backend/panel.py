@@ -63,7 +63,6 @@ class Cubo:
 def registrar_panel(app, db, estado, record):
     required = app.config["REQUIRE_AUTH"]
     master = app.config["API_KEY"]
-    device = app.config["DEVICE_KEY"]
     if required and len(master) < 24:
         raise RuntimeError("Configurar ALERTAR_API_KEY (mínimo 24 caracteres) antes de publicar.")
     app.secret_key = hashlib.sha256(("alertar-panel-session:" + master).encode()).digest() if master else secrets.token_bytes(32)
@@ -100,9 +99,9 @@ def registrar_panel(app, db, estado, record):
             hash_clave = app.extensions["alertar_hash"]
             tunel_auth = None
             if key and not es_master:
+                # Una clave de dispositivo vale solo si su hash está guardado en algún paso. Así,
+                # regenerarla desde el panel revoca la anterior, incluida la inicial de tunel-01.
                 tunel_auth = db().execute("SELECT * FROM tuneles WHERE api_key = ?", (hash_clave(key),)).fetchone()
-                if not tunel_auth and device and igual(key, device):
-                    tunel_auth = db().execute("SELECT * FROM tuneles WHERE paso_id = 'tunel-01'").fetchone()
 
             ruta_ingesta = request.endpoint in ("receive", "reserve")
             if es_master:

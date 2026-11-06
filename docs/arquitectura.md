@@ -38,7 +38,7 @@ AlertAR tiene tres partes que se comunican en un solo sentido: el **ESP32** de c
 | 10 | Consulta | El panel pide el estado del paso cada 5 s y el de todos los pasos cada 10 s; la API calcula la vigencia (60 s) | [api.md](api.md#estado-y-vigencia), [panel.md](panel.md#estado-y-vigencia) |
 | 11 | Análisis | Estadísticas y exportación se calculan en el servidor sobre la base completa | [api.md](api.md#estadísticas), [panel.md](panel.md#estadísticas) |
 
-Con conexión, un cambio de estado llega al panel en unos 5 a 8 segundos: el envío del ESP32 (1–3 s) más el intervalo de consulta del panel (hasta 5 s).
+Con conexión, un cambio de estado llega al panel en unos 2 a 7 segundos: el envío del ESP32 (menos de 1 s con la conexión abierta, más hasta 1 s de pausa entre pedidos) más el intervalo de consulta del panel (hasta 5 s).
 
 ## Identidades y horas
 
@@ -71,7 +71,7 @@ Separar las dos horas evita un error clásico: un lote de eventos viejos que lle
 
 | Falla | Efecto | Recuperación |
 |---|---|---|
-| Sin Internet o servidor caído | El ESP32 sigue mostrando el estado local; los eventos se acumulan en LittleFS | Se envían al volver, a 1 por segundo |
+| Sin Internet o servidor caído | El ESP32 sigue mostrando el estado local; los eventos se acumulan en LittleFS | Al volver se envía primero el más nuevo y el resto en lotes de hasta 9 por segundo |
 | Sin hora (NTP) | No se envía; los eventos esperan | Al sincronizar se envían con su hora |
 | Cola llena (128) | Se descartan muestras nuevas hasta liberar lugar | Al enviar se vacía |
 | Clave inválida o paso equivocado | El envío se bloquea y conserva los eventos | Corregir la configuración y `/reintentar` |

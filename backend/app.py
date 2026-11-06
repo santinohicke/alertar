@@ -16,6 +16,7 @@ from werkzeug.exceptions import HTTPException
 ROOT = Path(__file__).resolve().parent
 CODES = {"OK-001", "INF-001", *(f"ERR-{i:03}" for i in range(1, 8))}
 IDENTIFIER = re.compile(r"[A-Za-z0-9_-]{1,80}\Z")
+LOTE_MAX = 10  # Eventos por pedido en /api/eventos/lote (el firmware manda hasta 9).
 FIELDS = {
     "version", "evento_id", "dispositivo_id", "paso_id", "arranque_id",
     "secuencia", "uptime_ms", "medido_en", "codigo", "diagnostico",
@@ -220,18 +221,17 @@ def create_app(config=None):
             pass
         return current_app.config.get("DISPOSITIVOS", {"tunel-01": "esp32-01"})
 
-    @app.post("/api/eventos")
-    def receive():
+    def guardar_evento(body, dispositivos):
+        """Valida y guarda un evento. Devuelve (respuesta, código HTTP) sin abortar el pedido."""
         try:
-            event = validate(request.get_json())
+            event = validate(body)
         except ValueError as error:
-            return jsonify(error="evento_invalido", detalle=str(error)), 400
-        dispositivos = get_dispositivos()
+            return {"error": "evento_invalido", "detalle": str(error)}, 400
         if dispositivos.get(event["paso_id"]) != event["dispositivo_id"]:
-            return jsonify(error="dispositivo_o_paso_no_registrado"), 400
+            return {"error": "dispositivo_o_paso_no_registrado"}, 400
         auth_paso = getattr(g, "auth_paso_id", None)
         if auth_paso and auth_paso != event["paso_id"]:
-            return jsonify(error="clave_no_corresponde_a_este_tunel"), 403
+            return {"error": "clave_no_corresponde_a_este_tunel"}, 403
         payload = json.dumps(event, sort_keys=True, ensure_ascii=False, allow_nan=False)
         connection = db()
         received = utcnow().isoformat()
@@ -247,9 +247,29 @@ def create_app(config=None):
                 (event["dispositivo_id"], event["evento_id"]),
             ).fetchone()
             if previous is None or previous["payload"] != payload:
-                return jsonify(error="conflicto_identidad", detalle="Identificador o secuencia reutilizados con otro evento."), 409
-            return jsonify(guardado=True, duplicado=True, evento_id=event["evento_id"], recibido_en=previous["recibido_en"]), 200
-        return jsonify(guardado=True, duplicado=False, evento_id=event["evento_id"], recibido_en=received), 201
+                return {"error": "conflicto_identidad", "detalle": "Identificador o secuencia reutilizados con otro evento."}, 409
+            return {"guardado": True, "duplicado": True, "evento_id": event["evento_id"], "recibido_en": previous["recibido_en"]}, 200
+        return {"guardado": True, "duplicado": False, "evento_id": event["evento_id"], "recibido_en": received}, 201
+
+    @app.post("/api/eventos")
+    def receive():
+        respuesta, codigo = guardar_evento(request.get_json(), get_dispositivos())
+        return jsonify(respuesta), codigo
+
+    @app.post("/api/eventos/lote")
+    def receive_lote():
+        """Varios eventos en un pedido para vaciar pendientes rápido. Cada evento se guarda y
+        se responde por separado (mismo contrato que /api/eventos); uno inválido no frena al resto."""
+        body = request.get_json()
+        eventos = body.get("eventos") if isinstance(body, dict) else None
+        if not isinstance(eventos, list) or not 1 <= len(eventos) <= LOTE_MAX or set(body) != {"eventos"}:
+            return jsonify(error="lote_invalido", detalle=f"Enviar {{\"eventos\": [...]}} con 1 a {LOTE_MAX} eventos."), 400
+        dispositivos = get_dispositivos()
+        resultados = []
+        for evento in eventos:
+            respuesta, codigo = guardar_evento(evento, dispositivos)
+            resultados.append({"estado": codigo, **respuesta})
+        return jsonify(resultados=resultados), 200
 
     @app.post("/api/dispositivos/<dispositivo_id>/reserva")
     def reserve(dispositivo_id):

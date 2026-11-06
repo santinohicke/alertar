@@ -7,9 +7,13 @@ import time
 
 import json
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
-from flask import g, jsonify, redirect, render_template, request, session, url_for
+import csv
+import io
+import sqlite3
+
+from flask import Response, g, jsonify, redirect, render_template, request, session, url_for
 
 if __package__:
     from . import estadisticas
@@ -227,6 +231,91 @@ def registrar_panel(app, db, estado, record):
                 cache_stats.clear()
             cache_stats[clave] = (ahora, resultado)
         return jsonify(resultado)
+
+    # Exportación completa generada en el servidor y enviada por partes (streaming): un solo
+    # pedido sin importar la cantidad de registros, sin cargar todo en memoria.
+    COLUMNAS_EXPORT = ["evento_id", "dispositivo_id", "paso_id", "secuencia", "recibido_en", "medido_en",
+                       "codigo", "diagnostico", "agua_activa", "agua_pendiente", "obstruccion_carril1_cm",
+                       "obstruccion_carril2_cm", "sensor1_valido", "sensor2_valido", "uptime_ms", "arranque_id",
+                       "version"]
+
+    def fecha_param(nombre):
+        texto = request.args.get(nombre)
+        if not texto:
+            return None
+        d = datetime.fromisoformat(texto.replace("Z", "+00:00"))
+        if d.tzinfo is None:
+            raise ValueError("La fecha debe incluir zona horaria.")
+        return d.astimezone(timezone.utc)
+
+    @app.get("/api/pasos/<paso_id>/exportar")
+    def exportar_paso(paso_id):
+        formato = request.args.get("formato", "csv")
+        if formato not in ("csv", "json"):
+            return jsonify(error="formato_invalido", detalle="Usar csv o json."), 400
+        try:
+            desde, hasta = fecha_param("desde"), fecha_param("hasta")
+        except ValueError:
+            return jsonify(error="fecha_invalida", detalle="Usar ISO 8601 con zona horaria."), 400
+        if desde and hasta and desde > hasta:
+            return jsonify(error="rango_invalido", detalle="desde es posterior a hasta."), 400
+        if not db().execute("SELECT 1 FROM tuneles WHERE paso_id = ?", (paso_id,)).fetchone():
+            return jsonify(error="tunel_no_encontrado"), 404
+
+        consulta = "SELECT recibido_en, payload FROM eventos WHERE paso_id = ?"
+        params = [paso_id]
+        if desde:  # la medición siempre es anterior a la recepción (salvo 60 s de reloj)
+            consulta += " AND recibido_en >= ?"
+            params.append((desde - timedelta(seconds=120)).isoformat())
+        consulta += " ORDER BY secuencia DESC"
+        ruta = app.config["DATABASE"]
+
+        def en_rango(evento, recibido):
+            fecha = evento.get("medido_en") or recibido
+            try:
+                t = datetime.fromisoformat(fecha)
+            except (TypeError, ValueError):
+                return desde is None and hasta is None
+            return (desde is None or t >= desde) and (hasta is None or t <= hasta)
+
+        def filas():
+            # Conexión propia: la respuesta se sigue enviando después de que termina el pedido.
+            conn = sqlite3.connect(ruta, timeout=30)
+            try:
+                for recibido, payload in conn.execute(consulta, params):
+                    evento = {**json.loads(payload), "recibido_en": recibido}
+                    if en_rango(evento, recibido):
+                        yield evento
+            finally:
+                conn.close()
+
+        def generar_csv():
+            buffer = io.StringIO()
+            escritor = csv.writer(buffer, lineterminator="\r\n")
+            escritor.writerow(COLUMNAS_EXPORT)
+            yield "\ufeff" + buffer.getvalue()
+            for i, evento in enumerate(filas()):
+                buffer.seek(0)
+                buffer.truncate()
+                escritor.writerow(["" if evento.get(c) is None else
+                                   ("true" if evento[c] is True else "false" if evento[c] is False else evento[c])
+                                   for c in COLUMNAS_EXPORT])
+                yield buffer.getvalue()
+
+        def generar_json():
+            yield "[\n"
+            primero = True
+            for evento in filas():
+                yield ("" if primero else ",\n") + json.dumps(evento, ensure_ascii=False, sort_keys=True)
+                primero = False
+            yield "\n]\n"
+
+        sufijo = "_".join(x.strftime("%Y%m%d") for x in (desde, hasta) if x) or "completo"
+        nombre = f"alertar_{paso_id}_{sufijo}.{formato}"
+        tipo = "text/csv; charset=utf-8" if formato == "csv" else "application/json; charset=utf-8"
+        cuerpo = generar_csv() if formato == "csv" else generar_json()
+        return Response(cuerpo, mimetype=tipo.split(";")[0], content_type=tipo,
+                        headers={"Content-Disposition": f'attachment; filename="{nombre}"'})
 
     @app.get("/api/tuneles")
     def listar_tuneles():

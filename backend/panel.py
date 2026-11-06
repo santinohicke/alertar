@@ -11,6 +11,11 @@ from datetime import datetime, timezone
 
 from flask import g, jsonify, redirect, render_template, request, session, url_for
 
+if __package__:
+    from . import estadisticas
+else:
+    import estadisticas
+
 
 RUTAS_ADMIN = ("crear_tunel", "editar_tunel", "rotar_clave_tunel", "eliminar_tunel",
                "simular_evento", "simular_todos")
@@ -58,9 +63,10 @@ def registrar_panel(app, db, estado, record):
     if required and len(master) < 24:
         raise RuntimeError("Configurar ALERTAR_API_KEY (mínimo 24 caracteres) antes de publicar.")
     app.secret_key = hashlib.sha256(("alertar-panel-session:" + master).encode()).digest() if master else secrets.token_bytes(32)
-    # Sin diccionarios por IP que crezcan indefinidamente. Límites globales por proceso.
-    cubos = {"ingesta": Cubo(2, 4), "lectura": Cubo(4, 8), "login": Cubo(0.1, 5), "admin": Cubo(0.5, 6)}
-    activos = threading.BoundedSemaphore(4)
+    # Sin diccionarios por IP que crezcan indefinidamente. Límites globales por proceso,
+    # configurables con ALERTAR_LIMITE_* y ALERTAR_CONCURRENCIA (ver app.py).
+    cubos = {tipo: Cubo(*valores) for tipo, valores in app.config["RATE_LIMITS"].items()}
+    activos = threading.BoundedSemaphore(max(1, int(app.config["CONCURRENCIA"])))
     app.extensions["alertar_cubos"] = cubos
 
     def igual(provista, esperada):
@@ -194,6 +200,33 @@ def registrar_panel(app, db, estado, record):
             "creado_en": r["creado_en"], "ubicacion": r["ubicacion"],
             "latitud": r["latitud"], "longitud": r["longitud"],
         }
+
+    # Caché corta: varios paneles mirando el mismo paso comparten el cálculo.
+    cache_stats, lock_stats = {}, threading.Lock()
+
+    @app.get("/api/pasos/<paso_id>/estadisticas")
+    def estadisticas_paso(paso_id):
+        rango = request.args.get("rango", "24h")
+        if rango not in estadisticas.RANGOS_MS:
+            return jsonify(error="rango_invalido", detalle="Usar 1h, 6h, 24h, 7d o all."), 400
+        conn = db()
+        if not conn.execute("SELECT 1 FROM tuneles WHERE paso_id = ?", (paso_id,)).fetchone():
+            return jsonify(error="tunel_no_encontrado"), 404
+        clave = (paso_id, rango)
+        ahora = time.monotonic()
+        with lock_stats:
+            guardado = cache_stats.get(clave)
+            if guardado and ahora - guardado[0] < app.config.get("STATS_CACHE_S", 10):
+                return jsonify(guardado[1])
+        ahora_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+        total = conn.execute("SELECT COUNT(*) FROM eventos WHERE paso_id = ?", (paso_id,)).fetchone()[0]
+        filas = estadisticas.leer_eventos(conn, paso_id, rango, ahora_ms)
+        resultado = estadisticas.calcular(filas, rango, ahora_ms, total, paso_id)
+        with lock_stats:
+            if len(cache_stats) > 200:
+                cache_stats.clear()
+            cache_stats[clave] = (ahora, resultado)
+        return jsonify(resultado)
 
     @app.get("/api/tuneles")
     def listar_tuneles():

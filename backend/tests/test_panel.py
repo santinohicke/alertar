@@ -143,6 +143,15 @@ class TunelesTests(PanelTests):
         with sqlite3.connect(self.config["DATABASE"]) as con:
             self.assertEqual(con.execute("SELECT clave_demo FROM tuneles WHERE paso_id=?", (d["paso_id"],)).fetchone()[0], None)
 
+    def test_panel_session_deletes_with_csrf_only(self):
+        d = self.crear().json
+        self.login()
+        pagina = self.client.get("/").text
+        token = re.search(r'name="csrf" value="([^"]+)"', pagina).group(1)
+        self.assertEqual(self.client.delete(f"/api/tuneles/{d['paso_id']}").status_code, 403)
+        self.assertEqual(self.client.delete(f"/api/tuneles/{d['paso_id']}", headers={"X-CSRF-Token": token}).status_code, 200)
+        self.assertEqual(self.client.get(f"/api/pasos/{d['paso_id']}/estadisticas").status_code, 404)
+
     def test_rotate_key_invalidates_old(self):
         d = self.crear().json
         nueva = self.client.post(f"/api/tuneles/{d['paso_id']}/clave", headers=self.headers()).json["api_key"]

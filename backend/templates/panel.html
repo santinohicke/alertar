@@ -164,6 +164,13 @@
             </dd>
           </div>
         </dl>
+        <div class="device-danger">
+          <div>
+            <p class="device-danger-title">Borrar dispositivo</p>
+            <p id="disp-borrar-nota" class="device-danger-text">Elimina el paso, su clave y todas sus lecturas</p>
+          </div>
+          <button id="disp-borrar" class="btn btn-danger" type="button">Borrar dispositivo</button>
+        </div>
       </section>
     </div>
 
@@ -474,6 +481,21 @@
     </div>
     <div class="modal-actions">
       <button type="button" id="btn-finalizar-crear-tunel" class="btn btn-primary">Listo, ver paso</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- ===================== MODAL: BORRAR PASO ===================== -->
+<dialog id="modal-borrar" class="modal">
+  <header class="modal-head">
+    <h3 id="borrar-titulo">Borrar paso</h3>
+  </header>
+  <div class="modal-body">
+    <p id="borrar-texto" class="modal-help"></p>
+    <p id="borrar-error" class="form-error" hidden></p>
+    <div class="modal-actions">
+      <button id="borrar-cancelar" type="button" class="btn">Cancelar</button>
+      <button id="borrar-confirmar" type="button" class="btn btn-danger-solid">Borrar definitivamente</button>
     </div>
   </div>
 </dialog>

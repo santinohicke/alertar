@@ -9,7 +9,7 @@ let monitorAbortController = null;
 let running = false, timer, lastSuccess = 0, freshUntil = 0;
 let historyPage = 1, historyLimit = 25, historyTotal = 0, historyLoading = false, historyEvents = [];
 let exportLoading = false;
-let statsLoading = false, statsEvents = null, statsRange = "24h";
+let statsLoading = false, statsRange = "24h";
 
 /* Horas siempre en formato de 24 h. */
 const H23 = { hourCycle: "h23" };
@@ -925,306 +925,6 @@ async function exportHistory() {
    ESTADÍSTICAS
    ========================================================= */
 
-function filteredStats() {
-  const ms =
-    rangeMs(statsRange);
-
-
-  if (ms === null) {
-    return [...statsEvents];
-  }
-
-
-  const min =
-    Date.now() - ms;
-
-
-  return statsEvents.filter(
-    e => {
-      const d =
-        eventDate(e);
-
-      return (
-        d &&
-        d.getTime() >= min
-      );
-    }
-  );
-}
-
-
-function calculateStats(events) {
-  let normal = 0;
-  let waterActive = 0;
-  let valid1 = 0;
-  let valid2 = 0;
-  let missing = 0;
-  let latest = null;
-
-
-  const boots =
-    new Set();
-
-  const codes =
-    new Map();
-
-  const lane1 = [];
-  const lane2 = [];
-  const delays = [];
-  const byBoot =
-    new Map();
-
-
-  for (const e of events) {
-    if (e.arranque_id) {
-      boots.add(
-        e.arranque_id
-      );
-    }
-
-
-    if (
-      e.codigo === "OK-001"
-    ) {
-      normal++;
-    }
-
-
-    if (e.agua_activa) {
-      waterActive++;
-    }
-
-
-    if (e.sensor1_valido) {
-      valid1++;
-
-      const v =
-        Number(
-          e.obstruccion_carril1_cm
-        );
-
-      if (Number.isFinite(v)) {
-        lane1.push(v);
-      }
-    }
-
-
-    if (e.sensor2_valido) {
-      valid2++;
-
-      const v =
-        Number(
-          e.obstruccion_carril2_cm
-        );
-
-      if (Number.isFinite(v)) {
-        lane2.push(v);
-      }
-    }
-
-
-    const code =
-      e.codigo ||
-      "SIN CÓDIGO";
-
-
-    codes.set(
-      code,
-      (
-        codes.get(code) ||
-        0
-      ) + 1
-    );
-
-
-    const m =
-      validDate(e.medido_en);
-
-    const r =
-      validDate(e.recibido_en);
-
-
-    if (!m) {
-      missing++;
-    }
-
-
-    if (
-      r &&
-      (
-        !latest ||
-        r > latest
-      )
-    ) {
-      latest = r;
-    }
-
-
-    if (
-      m &&
-      r
-    ) {
-      const d =
-        (r - m) /
-        1000;
-
-
-      if (
-        Number.isFinite(d) &&
-        d >= 0
-      ) {
-        delays.push(d);
-      }
-    }
-
-
-    const seq =
-      Number(e.secuencia);
-
-
-    if (
-      e.arranque_id &&
-      Number.isFinite(seq)
-    ) {
-      if (
-        !byBoot.has(
-          e.arranque_id
-        )
-      ) {
-        byBoot.set(
-          e.arranque_id,
-          []
-        );
-      }
-
-
-      byBoot
-        .get(e.arranque_id)
-        .push(seq);
-    }
-  }
-
-
-  let gaps = 0;
-
-
-  for (
-    const seqs of
-    byBoot.values()
-  ) {
-    seqs.sort(
-      (a, b) => a - b
-    );
-
-
-    for (
-      let i = 1;
-      i < seqs.length;
-      i++
-    ) {
-      if (
-        seqs[i] -
-        seqs[i - 1] >
-        1
-      ) {
-        gaps +=
-          seqs[i] -
-          seqs[i - 1] -
-          1;
-      }
-    }
-  }
-
-
-  const avg =
-    a =>
-      a.length
-        ? a.reduce(
-          (x, y) => x + y,
-          0
-        ) / a.length
-        : null;
-
-
-  const max =
-    a =>
-      a.length
-        ? Math.max(...a)
-        : null;
-
-
-  return {
-    total:
-      events.length,
-
-    normal,
-    waterActive,
-    valid1,
-    valid2,
-
-    boots:
-      boots.size,
-
-    missing,
-
-    lane1Avg:
-      avg(lane1),
-
-    lane1Max:
-      max(lane1),
-
-    lane2Avg:
-      avg(lane2),
-
-    lane2Max:
-      max(lane2),
-
-    delayAvg:
-      avg(delays),
-
-    delayMax:
-      max(delays),
-
-    latest,
-    gaps,
-    codes
-  };
-}
-
-
-/* Cada evento cuenta como máximo el intervalo de muestreo (15 s) o hasta el
-   evento siguiente, lo que sea menor. Pasado ese lapso sin recibir nada no se
-   suma tiempo a ningún estado. */
-const MUESTRA_S = 15;
-
-function calculateTimeStats(events) {
-  const timed = events
-    .map(e => ({ e, t: eventDate(e) }))
-    .filter(x => x.t)
-    .sort((a, b) => (a.t - b.t) || (Number(a.e.secuencia) - Number(b.e.secuencia)));
-  const r = {
-    codes: new Map(), normal: 0, water: 0,
-    valid1: 0, valid2: 0, monitored: 0
-  };
-  for (let i = 0; i < timed.length; i++) {
-    const { e, t } = timed[i];
-    const gap = i + 1 < timed.length
-      ? (timed[i + 1].t - t) / 1000
-      : Infinity;
-    const dur = Math.min(Math.max(gap, 0), MUESTRA_S);
-    if (!dur) continue;
-    r.monitored += dur;
-    const code = e.codigo || "SIN CÓDIGO";
-    r.codes.set(code, (r.codes.get(code) || 0) + dur);
-    if (code === "OK-001") r.normal += dur;
-    if (e.agua_activa) r.water += dur;
-    if (e.sensor1_valido) r.valid1 += dur;
-    if (e.sensor2_valido) r.valid2 += dur;
-  }
-  return r;
-}
-
-
 function renderCodeBars(codes, total) {
   const c = $("stats-codigos");
 
@@ -1274,23 +974,6 @@ function renderCodeBars(codes, total) {
 }
 
 
-function activityConfig(events) {
-  if (statsRange === "1h") return { ms: 300000, name: "Bloques de 5 minutos" };
-  if (statsRange === "6h") return { ms: 1800000, name: "Bloques de 30 minutos" };
-  if (statsRange === "24h") return { ms: 3600000, name: "Bloques de 1 hora" };
-  if (statsRange === "7d") return { ms: 21600000, name: "Bloques de 6 horas" };
-
-  const times = events.map(eventDate).filter(Boolean).map(d => d.getTime());
-  if (!times.length) return { ms: 3600000, name: "Bloques de 1 hora" };
-
-  const span = Math.max(...times) - Math.min(...times);
-  if (span <= 21600000) return { ms: 1800000, name: "Bloques de 30 minutos" };
-  if (span <= 172800000) return { ms: 3600000, name: "Bloques de 1 hora" };
-  if (span <= 1209600000) return { ms: 21600000, name: "Bloques de 6 horas" };
-  return { ms: 86400000, name: "Bloques de 1 día" };
-}
-
-
 function activityLabel(ts, ms) {
   const d = new Date(ts);
   if (ms <= 3600000) {
@@ -1319,69 +1002,21 @@ function niceStep(max, ticks) {
   return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * mag;
 }
 
-/* Tramos de estado: cada evento vale hasta MUESTRA_S o hasta el siguiente. */
-function stateSegments(events) {
-  const timed = events
-    .map(e => ({ e, t: eventDate(e) }))
-    .filter(x => x.t)
-    .sort((a, b) => (a.t - b.t) || (Number(a.e.secuencia) - Number(b.e.secuencia)));
-  const segs = [];
-  for (let i = 0; i < timed.length; i++) {
-    const t0 = timed[i].t.getTime();
-    const next = i + 1 < timed.length ? timed[i + 1].t.getTime() : Infinity;
-    const t1 = Math.min(next, t0 + MUESTRA_S * 1000);
-    if (t1 <= t0) continue;
-    const sev = sevOf(timed[i].e.codigo);
-    const last = segs[segs.length - 1];
-    if (last && last.sev === sev && t0 - last.t1 <= 1000) last.t1 = t1;
-    else segs.push({ sev, t0, t1 });
-  }
-  return segs;
-}
-
-
-function renderActivity(events, animate) {
+function renderActivity(agg, animate) {
   const box = $("stats-actividad");
-  const cfg = activityConfig(events.length ? events : statsEvents);
-  const ms = cfg.ms;
-  $("actividad-resolucion").textContent = cfg.name;
-
-  let start, end;
-  const fixed = rangeMs(statsRange);
-  const times = events.map(eventDate).filter(Boolean).map(d => d.getTime());
-
-  if (fixed !== null) {
-    end = Date.now();
-    start = end - fixed;
-  } else if (times.length) {
-    start = Math.min(...times);
-    end = Math.max(...times) + ms;
-  } else {
+  const act = agg.actividad;
+  if (!act || !act.bloques.length) {
+    $("actividad-resolucion").textContent = "—";
+    $("stats-actividad-detalle").textContent = "";
     emptyChart(box, "Sin datos en este rango");
     return;
   }
-  start = Math.floor(start / ms) * ms;
-  end = Math.ceil(end / ms) * ms;
+  const ms = act.bloque_ms;
+  $("actividad-resolucion").textContent = act.nombre;
+  const start = act.inicio, end = act.fin;
+  const pts = act.bloques.map((b, i) => [start + i * ms, { n: b[0], ok: b[1], warn: b[2], crit: b[3], unknown: b[4] }]);
+  const segs = agg.estado.map(([t0, t1, sev]) => ({ t0, t1, sev }));
 
-  const buckets = new Map();
-  for (let t = start; t < end; t += ms) buckets.set(t, { n: 0, ok: 0, warn: 0, crit: 0, unknown: 0 });
-  events.forEach(e => {
-    const d = eventDate(e);
-    if (!d) return;
-    const b = buckets.get(Math.floor(d.getTime() / ms) * ms);
-    if (b) b.n++;
-  });
-
-  const segs = stateSegments(events);
-  for (const s of segs) {
-    // Tiempo por severidad dentro de cada bloque, para el detalle al pasar el mouse.
-    for (let t = Math.floor(s.t0 / ms) * ms; t < s.t1; t += ms) {
-      const b = buckets.get(t);
-      if (b) b[s.sev] += Math.min(s.t1, t + ms) - Math.max(s.t0, t);
-    }
-  }
-
-  const pts = [...buckets.entries()];
   const W = chartWidth(box);
   const L = 40, R = 8;
   const RIB_Y = 4, RIB_H = 14;
@@ -1487,29 +1122,15 @@ function renderActivity(events, animate) {
 }
 
 
-function renderObstruction(events, animate) {
+function renderObstruction(agg, animate) {
   const box = $("stats-obstruccion");
   const readout = $("stats-obstruccion-detalle");
   const defaultText = "";
   readout.textContent = defaultText;
 
-  const raw = events
-    .map(e => {
-      const d = eventDate(e);
-      if (!d) return null;
-      const a = e.sensor1_valido ? Number(e.obstruccion_carril1_cm) : null;
-      const b = e.sensor2_valido ? Number(e.obstruccion_carril2_cm) : null;
-      return { t: d.getTime(), c1: Number.isFinite(a) ? a : null, c2: Number.isFinite(b) ? b : null };
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.t - b.t);
-
-  if (raw.length < 2) {
-    emptyChart(box, "Pocas mediciones en este rango");
-    return;
-  }
-  if (!raw.some(p => p.c1 !== null || p.c2 !== null)) {
-    emptyChart(box, "Sin mediciones válidas en este rango");
+  const pts = (agg.obstruccion.puntos || []).map(([t, c1, c2, tEnd]) => ({ t, c1, c2, tEnd }));
+  if (pts.length < 2) {
+    emptyChart(box, agg.total ? "Sin mediciones válidas en este rango" : "Sin datos en este rango");
     return;
   }
 
@@ -1518,26 +1139,11 @@ function renderObstruction(events, animate) {
   const H = T + PH + 26;
   const pw = W - L - R;
 
-  const minT = raw[0].t;
-  const maxT = raw[raw.length - 1].t;
+  const minT = pts[0].t;
+  const maxT = pts[pts.length - 1].t;
   const span = Math.max(1, maxT - minT);
-
-  // Reducción por bloques de tiempo conservando el máximo de cada carril,
-  // así un pico breve no desaparece del gráfico.
-  const nb = Math.min(raw.length, Math.max(60, Math.floor(pw / 1.5)));
-  const bucketMs = span / nb;
-  const pts = [];
-  for (const p of raw) {
-    const k = Math.min(nb - 1, Math.floor((p.t - minT) / bucketMs));
-    const last = pts[pts.length - 1];
-    if (last && last.k === k) {
-      if (p.c1 !== null) last.c1 = last.c1 === null ? p.c1 : Math.max(last.c1, p.c1);
-      if (p.c2 !== null) last.c2 = last.c2 === null ? p.c2 : Math.max(last.c2, p.c2);
-      last.tEnd = p.t;
-    } else {
-      pts.push({ k, t: p.t, tEnd: p.t, c1: p.c1, c2: p.c2 });
-    }
-  }
+  // El servidor ya redujo la serie tomando el máximo de cada bloque.
+  const bucketMs = agg.obstruccion.bloque_ms || span / pts.length;
 
   const maxV = Math.max(0, ...pts.flatMap(p => [p.c1, p.c2].filter(v => v !== null)));
   const ceiling = Math.max(120, maxV * 1.08);
@@ -1701,61 +1307,6 @@ const fmtInt = v => Math.round(v).toLocaleString("es-AR");
 const fmtPct = v => `${num1(v)} %`;
 const cmOrDash = v => v === null ? "—" : `${num1(v)} cm`;
 
-let lastStatsFiltered = [];
-let statsAnimateNext = false; // la entrada de los gráficos se ve solo al cargar los datos
-
-function drawCharts(events, animate) {
-  renderActivity(events, animate);
-  renderObstruction(events, animate);
-}
-
-function renderStats() {
-  if (!statsEvents) {
-    return;
-  }
-
-  document.querySelectorAll(".range-button").forEach(b =>
-    b.classList.toggle("active", b.dataset.range === statsRange)
-  );
-  $("stats-range-label").textContent = rangeText(statsRange);
-
-  const events = filteredStats();
-  lastStatsFiltered = events;
-  const s = calculateStats(events);
-  const t = calculateTimeStats(events);
-
-  setKpi("stat-total", s.total, fmtInt);
-  setKpi("stat-base", statsEvents.length, fmtInt);
-  setKpi("stat-arranques", s.boots, fmtInt);
-  setKpi("stat-normal", t.monitored ? t.normal / t.monitored * 100 : 0, fmtPct);
-  setKpi("stat-agua", duration(t.water));
-  setKpi("stat-monitoreado", duration(t.monitored));
-  setKpi("stat-ultima", s.latest ? s.latest.toLocaleString("es-AR", H23) : "—");
-  $("stat-ultima-edad").textContent = s.latest ? ageText(s.latest) : "Sin datos en el rango";
-
-  setKpi("stat-sensor1", t.monitored ? t.valid1 / t.monitored * 100 : 0, fmtPct);
-  setKpi("stat-sensor2", t.monitored ? t.valid2 / t.monitored * 100 : 0, fmtPct);
-  setKpi("stat-c1-prom", cmOrDash(s.lane1Avg));
-  setKpi("stat-c1-max", cmOrDash(s.lane1Max));
-  setKpi("stat-c2-prom", cmOrDash(s.lane2Avg));
-  setKpi("stat-c2-max", cmOrDash(s.lane2Max));
-  setKpi("stat-delay-prom", duration(s.delayAvg));
-  setKpi("stat-delay-max", duration(s.delayMax));
-  setKpi("stat-gaps", s.gaps, fmtInt);
-  setKpi("stat-sin-fecha", s.missing, fmtInt);
-
-  renderCodeBars(t.codes, t.monitored);
-  drawCharts(events, statsAnimateNext);
-  if (!statsAnimateNext) {
-    replay($("stats-actividad"), "fade");
-    replay($("stats-obstruccion"), "fade");
-  }
-  statsAnimateNext = false;
-
-  $("stats-estado").textContent = `Actualizado ${new Date().toLocaleTimeString("es-AR", { hourCycle: "h23", hour: "2-digit", minute: "2-digit" })}`;
-}
-
-
 function setProgress(n, total) {
   const bar = $("stats-progress");
   if (n === null) {
@@ -1767,43 +1318,116 @@ function setProgress(n, total) {
   $("stats-progress-bar").style.transform = `scaleX(${total ? Math.min(1, n / total) : 0.05})`;
 }
 
+let statsAgg = null;          // último resumen dibujado
+let statsAnimateNext = false; // la entrada de los gráficos se ve solo al cargar un paso nuevo
+let statsPedido = 0;
+const statsCache = new Map(); // "paso|rango" -> { agg, t }
+const STATS_CACHE_MS = 60000;
+
+function drawCharts(agg, animate) {
+  if (!agg) return;
+  renderActivity(agg, animate);
+  renderObstruction(agg, animate);
+}
+
+function pintarEstadisticas(agg) {
+  statsAgg = agg;
+  document.querySelectorAll(".range-button").forEach(b =>
+    b.classList.toggle("active", b.dataset.range === statsRange)
+  );
+  $("stats-range-label").textContent = rangeText(statsRange);
+
+  const m = agg.monitoreado_s;
+  setKpi("stat-total", agg.total, fmtInt);
+  setKpi("stat-base", agg.total_base, fmtInt);
+  setKpi("stat-arranques", agg.arranques, fmtInt);
+  setKpi("stat-normal", m ? agg.normal_s / m * 100 : 0, fmtPct);
+  setKpi("stat-agua", duration(agg.agua_s));
+  setKpi("stat-monitoreado", duration(m));
+  const ultima = validDate(agg.ultima_recepcion);
+  setKpi("stat-ultima", ultima ? ultima.toLocaleString("es-AR", H23) : "—");
+  $("stat-ultima-edad").textContent = ultima ? ageText(ultima) : "Sin datos en el rango";
+
+  setKpi("stat-sensor1", m ? agg.valido1_s / m * 100 : 0, fmtPct);
+  setKpi("stat-sensor2", m ? agg.valido2_s / m * 100 : 0, fmtPct);
+  setKpi("stat-c1-prom", cmOrDash(agg.carril1.promedio));
+  setKpi("stat-c1-max", cmOrDash(agg.carril1.maximo));
+  setKpi("stat-c2-prom", cmOrDash(agg.carril2.promedio));
+  setKpi("stat-c2-max", cmOrDash(agg.carril2.maximo));
+  setKpi("stat-delay-prom", duration(agg.demora.promedio));
+  setKpi("stat-delay-max", duration(agg.demora.maximo));
+  setKpi("stat-gaps", agg.saltos, fmtInt);
+  setKpi("stat-sin-fecha", agg.sin_fecha, fmtInt);
+
+  renderCodeBars(new Map(agg.codigos), m);
+  drawCharts(agg, statsAnimateNext);
+  if (!statsAnimateNext) {
+    replay($("stats-actividad"), "fade");
+    replay($("stats-obstruccion"), "fade");
+  }
+  statsAnimateNext = false;
+
+  const hora = new Date(agg.hasta).toLocaleTimeString("es-AR", { hourCycle: "h23", hour: "2-digit", minute: "2-digit" });
+  $("stats-estado").textContent = `Actualizado ${hora}`;
+}
+
+/* Muestra el rango elegido (los botones de rango llaman a esta función). */
+function renderStats() {
+  loadStats();
+}
 
 async function loadStats(force = false) {
-  if (statsLoading) {
-    return;
-  }
-  if (statsEvents && !force) {
-    renderStats();
+  const paso = currentTunnel, rango = statsRange;
+  const clave = `${paso}|${rango}`;
+  const guardado = statsCache.get(clave);
+  if (guardado && !force && Date.now() - guardado.t < STATS_CACHE_MS) {
+    if (!statsAgg || statsAgg.paso_id !== paso) statsAnimateNext = true;
+    pintarEstadisticas(guardado.agg);
     return;
   }
 
+  const pedido = ++statsPedido;
   statsLoading = true;
   $("stats-actualizar").disabled = true;
   $("stats-actualizar").classList.add("is-busy");
   $("stats-body").classList.add("updating");
   $("stats-estado").textContent = "Cargando…";
-  setProgress(0, 0);
+  setProgress(0.35, 1);
 
   try {
-    statsEvents = await fetchAllHistory((n, total) => {
-      $("stats-estado").textContent =
-        `Cargando ${n.toLocaleString("es-AR")} de ${total.toLocaleString("es-AR")} registros…`;
-      setProgress(n, total);
-    });
+    const url = `/api/pasos/${encodeURIComponent(paso)}/estadisticas?rango=${encodeURIComponent(rango)}`;
+    let r;
+    for (let intento = 0; ; intento++) {
+      r = await fetch(url, { cache: "no-store" });
+      if (r.status !== 429 || intento >= 4) break;
+      const espera = Number(r.headers.get("Retry-After"));
+      await sleep((Number.isFinite(espera) && espera > 0 ? espera : 2) * 1000);
+    }
+    if (r.status === 401) {
+      location.assign("/login");
+      return;
+    }
+    if (!r.ok) throw new Error("No se pudieron calcular las estadísticas");
+    const agg = await r.json();
+    statsCache.set(clave, { agg, t: Date.now() });
+    if (pedido !== statsPedido || paso !== currentTunnel || rango !== statsRange) return;
+    setProgress(1, 1);
+    if (!statsAgg || statsAgg.paso_id !== paso) statsAnimateNext = true;
     $("stats-body").classList.remove("updating");
-    statsAnimateNext = true;
-    renderStats();
+    pintarEstadisticas(agg);
 
   } catch (e) {
     console.error(e);
-    $("stats-estado").textContent = "No se pudieron calcular las estadísticas";
+    if (pedido === statsPedido) $("stats-estado").textContent = "No se pudieron calcular las estadísticas";
 
   } finally {
-    statsLoading = false;
-    $("stats-actualizar").disabled = false;
-    $("stats-actualizar").classList.remove("is-busy");
-    $("stats-body").classList.remove("updating");
-    setTimeout(() => setProgress(null), 250);
+    if (pedido === statsPedido) {
+      statsLoading = false;
+      $("stats-actualizar").disabled = false;
+      $("stats-actualizar").classList.remove("is-busy");
+      $("stats-body").classList.remove("updating");
+      setTimeout(() => setProgress(null), 250);
+    }
   }
 }
 
@@ -2089,9 +1713,9 @@ window.addEventListener("resize", () => {
   resizeTimer = setTimeout(() => {
     if (activeView === "mapa" && mapaVista) mapaVista.refit();
     const w = $("stats-actividad").clientWidth;
-    if (activeView === "estadisticas" && statsEvents && Math.abs(w - lastChartWidth) > 8) {
+    if (activeView === "estadisticas" && statsAgg && Math.abs(w - lastChartWidth) > 8) {
       lastChartWidth = w;
-      drawCharts(lastStatsFiltered, false);
+      drawCharts(statsAgg, false);
     }
   }, 150);
 });
@@ -2139,6 +1763,7 @@ function actualizarHeaderTunel() {
     mapa.href = `https://www.openstreetmap.org/?mlat=${tunel.latitud}&mlon=${tunel.longitud}#map=17/${tunel.latitud}/${tunel.longitud}`;
   }
   renderDispositivo();
+  renderBorrado();
 }
 
 /* Datos del dispositivo al pie de Monitoreo.
@@ -2275,7 +1900,6 @@ function cambiarTunel(pasoId) {
   historyEvents = [];
   historyPage = 1;
   historyTotal = 0;
-  statsEvents = null;
   lastSeq = null;
   lastCodeSev = null;
   monitorTunnel = null;
@@ -2765,6 +2389,61 @@ function coordsEscritas() {
 }
 
 
+/* Borrar un paso: su clave, sus lecturas y sus reservas de secuencia (DELETE /api/tuneles/<paso>).
+   tunel-01 es el paso base que la API vuelve a crear al iniciar, por eso no se borra. */
+function renderBorrado() {
+  const t = tunnelsList.find(x => x.paso_id === currentTunnel);
+  const base = t && t.paso_id === "tunel-01";
+  $("disp-borrar").disabled = !t || base;
+  $("disp-borrar-nota").textContent = base
+    ? "El paso base (tunel-01) no se puede borrar"
+    : "Elimina el paso, su clave y todas sus lecturas";
+}
+
+function abrirBorrado() {
+  const t = tunnelsList.find(x => x.paso_id === currentTunnel);
+  if (!t || t.paso_id === "tunel-01") return;
+  const n = Number(t.total_eventos) || 0;
+  $("borrar-titulo").textContent = `¿Borrar ${t.nombre}?`;
+  const texto = $("borrar-texto");
+  texto.replaceChildren(
+    document.createTextNode("Se eliminan el paso "),
+    el("strong", null, t.paso_id),
+    document.createTextNode(`, la clave de ${t.dispositivo_id} y ${n.toLocaleString("es-AR")} ${n === 1 ? "lectura" : "lecturas"}. No se puede deshacer.`)
+  );
+  $("borrar-error").hidden = true;
+  $("borrar-confirmar").disabled = false;
+  $("modal-borrar").dataset.paso = t.paso_id;
+  $("modal-borrar").showModal();
+  $("borrar-cancelar").focus();
+}
+
+async function confirmarBorrado() {
+  const modal = $("modal-borrar");
+  const paso = modal.dataset.paso;
+  $("borrar-confirmar").disabled = true;
+  try {
+    const r = await fetch(`/api/tuneles/${encodeURIComponent(paso)}`, {
+      method: "DELETE",
+      headers: { "X-CSRF-Token": csrfToken() }
+    });
+    if (r.status === 401) { location.assign("/login"); return; }
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.detalle || data.error || "No se pudo borrar el paso");
+    modal.close();
+    for (const k of [...statsCache.keys()]) if (k.startsWith(`${paso}|`)) statsCache.delete(k);
+    mapStates.delete(paso);
+    siteSev.delete(paso);
+    await cargarTuneles();
+    if (tunnelsList.length) cambiarTunel(tunnelsList[0].paso_id);
+  } catch (e) {
+    console.error(e);
+    $("borrar-error").textContent = e.message;
+    $("borrar-error").hidden = false;
+    $("borrar-confirmar").disabled = false;
+  }
+}
+
 /* Modal y creación de túneles */
 function abrirModalNuevoTunel() {
   const modal = $("modal-nuevo-tunel");
@@ -2871,6 +2550,9 @@ function initMultiTunelListeners() {
     });
   });
 
+  $("disp-borrar").addEventListener("click", abrirBorrado);
+  $("borrar-cancelar").addEventListener("click", () => $("modal-borrar").close());
+  $("borrar-confirmar").addEventListener("click", confirmarBorrado);
   $("btn-nuevo-tunel-top").addEventListener("click", abrirModalNuevoTunel);
   $("btn-cerrar-modal-tunel").addEventListener("click", cerrarModalNuevoTunel);
   $("btn-cancelar-modal-tunel").addEventListener("click", cerrarModalNuevoTunel);

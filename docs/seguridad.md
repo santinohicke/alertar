@@ -9,7 +9,7 @@ Este documento reúne quién puede hacer qué en AlertAR, con qué credencial, d
 | **Clave administrativa** (`ALERTAR_API_KEY`, mínimo 24 caracteres) | El administrador | Solo en el entorno privado del servidor (`alertar.env`, permisos 600) | Todo: leer, gestionar pasos y enviar eventos. También es la **contraseña del panel** |
 | **Sesión del panel** | Quien inició sesión con la contraseña | Cookie firmada en el navegador | Leer todo y, con token CSRF, gestionar pasos. No envía eventos |
 | **Clave de dispositivo** (una por paso, 32 caracteres aleatorios) | El ESP32 de ese paso | En el servidor, solo su hash; en el ESP32, en `conectividad_secrets.h` (ignorado por Git) | Únicamente enviar eventos y reservar secuencias **de su paso** |
-| **Clave inicial de `tunel-01`** (`ALERTAR_DEVICE_KEY`) | El primer ESP32 | Entorno privado del servidor | Lo mismo que la clave de dispositivo de `tunel-01` |
+| **Clave inicial de `tunel-01`** (`ALERTAR_DEVICE_KEY`, opcional) | El primer ESP32 | Entorno privado del servidor | Solo define la clave de `tunel-01` cuando la base se crea por primera vez; después es una clave de dispositivo más |
 
 Ninguna clave está en el repositorio. Cada clave se envía en el encabezado `X-API-Key` y viaja siempre por HTTPS.
 
@@ -19,7 +19,7 @@ Ninguna clave está en el repositorio. Cada clave se envía en el encabezado `X-
 - En la base solo queda `sha256:<hash>`. Si alguien copia la base, no obtiene claves utilizables. Como son aleatorias y largas, no hace falta sal.
 - Al recibir un pedido, el servidor calcula el hash de la clave recibida y busca el paso que la tiene. Con ella solo se aceptan `POST /api/eventos` y la reserva, y únicamente para ese paso y ese dispositivo: otro paso → 403.
 - Regenerar la clave invalida la anterior de inmediato.
-- **Excepción:** `ALERTAR_DEVICE_KEY` sigue autenticando como `tunel-01` mientras esté definida en el entorno, aunque se regenere la clave de ese paso desde el panel. Para revocarla hay que quitarla de `alertar.env` y reiniciar el servicio.
+- Una clave solo vale si su hash está guardado en un paso. `ALERTAR_DEVICE_KEY` se usa únicamente para crear `tunel-01` la primera vez; regenerar la clave de ese paso también la revoca. Una vez creado el paso, conviene quitar la variable del entorno para que no reaparezca si alguna vez se recrea la base.
 
 ## Panel: sesión, cookie y CSRF
 

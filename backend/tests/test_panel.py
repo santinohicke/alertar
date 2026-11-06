@@ -131,6 +131,14 @@ class TunelesTests(PanelTests):
         self.assertEqual(self.client.delete(f"/api/tuneles/{d['paso_id']}", headers={"X-CSRF-Token": token}).status_code, 200)
         self.assertEqual(self.client.get(f"/api/pasos/{d['paso_id']}/estadisticas").status_code, 404)
 
+    def test_rotating_tunel01_revokes_initial_device_key(self):
+        # ALERTAR_DEVICE_KEY es solo la clave inicial de tunel-01: después de regenerarla deja de valer.
+        ingesta = lambda k: self.client.post("/api/eventos", json=self.event, headers={"X-API-Key": k})
+        self.assertEqual(ingesta(self.config["DEVICE_KEY"]).status_code, 201)
+        nueva = self.client.post("/api/tuneles/tunel-01/clave", headers=self.headers()).json["api_key"]
+        self.assertEqual(ingesta(self.config["DEVICE_KEY"]).status_code, 401)
+        self.assertEqual(ingesta(nueva).status_code, 200)  # mismo evento: duplicado aceptado con la clave nueva
+
     def test_rotate_key_invalidates_old(self):
         d = self.crear().json
         nueva = self.client.post(f"/api/tuneles/{d['paso_id']}/clave", headers=self.headers()).json["api_key"]

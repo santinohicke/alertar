@@ -18,9 +18,11 @@ El servicio publicado de AlertAR corre en un servidor Linux con Tailscale, como 
 ```text
 ALERTAR_REQUIRE_AUTH=1
 ALERTAR_API_KEY=<clave administrativa, mínimo 24 caracteres>
-ALERTAR_DEVICE_KEY=<clave inicial de tunel-01>
+ALERTAR_DEVICE_KEY=<clave inicial de tunel-01, opcional>
 ALERTAR_DATABASE=<ruta a ~/alertar/data/alertar.sqlite3>
 ```
+
+`ALERTAR_DEVICE_KEY` solo se usa la primera vez, cuando la base todavía no tiene `tunel-01`. Si se omite, la clave inicial es aleatoria y se obtiene regenerándola desde el panel. Una vez creado el paso, se puede quitar del archivo.
 
 Los límites de ritmo y la concurrencia usan los valores por defecto del código (pensados para un servidor). Para cambiarlos, agregar `ALERTAR_LIMITE_*` o `ALERTAR_CONCURRENCIA`; ver [api.md](api.md#límites-de-ritmo).
 

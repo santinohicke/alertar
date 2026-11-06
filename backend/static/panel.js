@@ -153,7 +153,7 @@ function rangeText(r) {
 const POLL_MS = 5000;
 const SVG_NS = "http://www.w3.org/2000/svg";
 
-/* Severidad según tabla_logica.md: verde habilitado, amarillo precaución, rojo cierre. */
+/* Severidad según docs/tabla_logica.md: verde habilitado, amarillo precaución, rojo cierre. */
 const CODE_INFO = {
   "OK-001": ["ok", "Situación normal"],
   "INF-001": ["ok", "Ocupación transitoria"],

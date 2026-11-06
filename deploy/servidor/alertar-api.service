@@ -1,0 +1,19 @@
+# Servicio de usuario de systemd para AlertAR en un servidor Linux.
+# Copiar a ~/.config/systemd/user/alertar-api.service y ajustar las rutas si hace falta.
+# Un solo proceso: los límites de ritmo y la caché de estadísticas son por proceso.
+[Unit]
+Description=AlertAR API y panel (Flask + gunicorn)
+After=network-online.target
+
+[Service]
+WorkingDirectory=%h/alertar/backend
+EnvironmentFile=%h/.config/alertar/alertar.env
+ExecStart=%h/alertar/venv/bin/gunicorn --bind 127.0.0.1:5001 --workers 1 --threads 16 --timeout 30 --keep-alive 30 --forwarded-allow-ips 127.0.0.1 "app:create_app()"
+Restart=on-failure
+RestartSec=5
+MemoryMax=1G
+CPUQuota=200%
+TasksMax=64
+
+[Install]
+WantedBy=default.target

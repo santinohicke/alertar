@@ -830,7 +830,7 @@ function exportHistory() {
   document.body.append(a);
   a.click();
   a.remove();
-  $("export-estado").textContent = "Descarga iniciada; el progreso se ve en el navegador";
+  $("export-estado").textContent = "Descarga iniciada";
 }
 
 function actualizarSelectorExport() {

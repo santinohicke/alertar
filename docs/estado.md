@@ -16,7 +16,7 @@
 
 ## Comprobado
 
-- **Noviembre de 2026:** 47 pruebas del backend aprobadas. Con 252.000 eventos en el servidor, una prueba de carga de 20 paneles y 10 ESP32 durante 60 s no tuvo rechazos; la exportación completa de un paso (84.000 eventos, 19 MB) tarda unos 3 s ([despliegue.md](despliegue.md#capacidad-medida)). Entregas continuas Wokwi → HTTPS → servidor con el panel en vivo.
+- **Noviembre de 2026:** 48 pruebas del backend aprobadas. Con 252.000 eventos en el servidor, una prueba de carga de 20 paneles y 10 ESP32 durante 60 s no tuvo rechazos; la exportación completa de un paso (84.000 eventos, 19 MB) tarda unos 3 s ([despliegue.md](despliegue.md#capacidad-medida)). Entregas continuas Wokwi → HTTPS → servidor con el panel en vivo.
 - **Septiembre de 2026:** 21 pruebas Python, pruebas C++ de cola y protocolo y 2.700 combinaciones de lógica aprobadas; panel publicado en la Raspberry Pi con `/health` 200.
 
 ## Pendiente

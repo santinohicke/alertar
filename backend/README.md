@@ -30,7 +30,7 @@ La aplicación crea las tablas al iniciar, sin borrar datos. Por defecto la base
 | --- | --- |
 | `ALERTAR_REQUIRE_AUTH` | `1` exige autenticación (obligatorio al publicar) |
 | `ALERTAR_API_KEY` | Clave administrativa y contraseña del panel, mínimo 24 caracteres |
-| `ALERTAR_DEVICE_KEY` | Clave inicial de `tunel-01`; si falta, se genera una aleatoria. Las demás claves se crean desde el panel |
+| `ALERTAR_DEVICE_KEY` | Clave inicial de `tunel-01`, usada solo al crear la base; si falta, se genera una aleatoria. Regenerar la clave desde el panel la revoca. Las demás claves se crean desde el panel |
 | `ALERTAR_DATABASE` | Ruta de la base SQLite |
 | `ALERTAR_LIMITE_INGESTA`, `ALERTAR_LIMITE_LECTURA`, `ALERTAR_LIMITE_ADMIN`, `ALERTAR_LIMITE_LOGIN` | Límites de ritmo como `ritmo,ráfaga`; valores en [api.md](../docs/api.md#límites-de-ritmo) |
 | `ALERTAR_CONCURRENCIA` | Pedidos atendidos a la vez (por defecto 16) |
@@ -56,4 +56,4 @@ cd backend
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
-Son 47 y usan bases temporales en `backend/.test-tmp`, sin tocar la base de uso normal. Cubren persistencia, contrato, duplicados y conflictos, actualidad, autenticación y separación de permisos, CSRF, panel, cálculo y endpoint de estadísticas, exportación por rango, borrado de pasos y límites de ritmo. No reemplazan una prueba prolongada Wokwi → HTTPS → servidor.
+Son 48 y usan bases temporales en `backend/.test-tmp`, sin tocar la base de uso normal. Cubren persistencia, contrato, duplicados y conflictos, actualidad, autenticación y separación de permisos, CSRF, panel, cálculo y endpoint de estadísticas, exportación por rango, borrado de pasos y límites de ritmo. No reemplazan una prueba prolongada Wokwi → HTTPS → servidor.

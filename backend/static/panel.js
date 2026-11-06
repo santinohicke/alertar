@@ -8,7 +8,6 @@ let tunnelsList = [];
 let monitorAbortController = null;
 let running = false, timer, lastSuccess = 0, freshUntil = 0;
 let historyPage = 1, historyLimit = 25, historyTotal = 0, historyLoading = false, historyEvents = [];
-let exportLoading = false;
 let statsLoading = false, statsRange = "24h";
 
 /* Horas siempre en formato de 24 h. */
@@ -523,30 +522,6 @@ async function fetchHistoryBatch(limit, offset) {
 }
 
 
-async function fetchAllHistory(progress) {
-  const rows = [];
-  let offset = 0;
-  let total = null;
-
-  for (let i = 0; total === null || offset < total; i++) {
-    // Las primeras solicitudes usan la ráfaga permitida; después se espacian
-    // a ~3 por segundo para no agotar el límite compartido con el monitoreo.
-    if (i >= 6) await sleep(320);
-
-    const data = await fetchHistoryBatch(200, offset);
-    if (total === null) total = Number(data.total) || 0;
-
-    const events = Array.isArray(data.eventos) ? data.eventos : [];
-    rows.push(...events);
-    offset += events.length;
-
-    if (progress) progress(rows.length, total);
-    if (!events.length || events.length < 200) break;
-  }
-  return rows;
-}
-
-
 function renderHistory(events) {
   const tbody = $("historial-eventos");
 
@@ -801,122 +776,71 @@ function downloadFile(
 }
 
 
-async function exportHistory() {
-  if (exportLoading) {
+/* "Página actual" se arma en el navegador con lo que ya está cargado. Los rangos de
+   tiempo los genera el servidor (/api/pasos/<paso>/exportar) en un solo pedido que el
+   navegador descarga directamente, sin importar la cantidad de registros. */
+const EXPORT_RANGOS = { "24h": 86400000, "7d": 604800000, "30d": 2592000000 };
+
+function fechaLocal(texto, finDelDia) {
+  if (!texto) return null;
+  const [a, m, d] = texto.split("-").map(Number);
+  return finDelDia ? new Date(a, m - 1, d, 23, 59, 59, 999) : new Date(a, m - 1, d, 0, 0, 0, 0);
+}
+
+function exportHistory() {
+  const sel = $("export-cantidad").value;
+  const formato = $("export-formato").value;
+
+  if (sel === "pagina") {
+    if (!historyEvents.length) {
+      $("export-estado").textContent = "No hay registros para exportar";
+      return;
+    }
+    const now = new Date();
+    const d = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    if (formato === "json") {
+      downloadFile(`alertar_${currentTunnel}_pagina_${d}.json`, JSON.stringify(historyEvents, null, 2), "application/json;charset=utf-8");
+    } else {
+      downloadFile(`alertar_${currentTunnel}_pagina_${d}.csv`, "\uFEFF" + csvFromRows(historyEvents), "text/csv;charset=utf-8");
+    }
+    $("export-estado").textContent = `${historyEvents.length.toLocaleString("es-AR")} registros exportados`;
     return;
   }
 
-
-  exportLoading = true;
-
-
-  $("exportar").disabled =
-    true;
-
-  $("export-formato").disabled =
-    true;
-
-  $("export-cantidad").disabled =
-    true;
-
-
-  try {
-    const sel =
-      $("export-cantidad").value;
-
-
-    let rows;
-
-
-    if (sel === "pagina") {
-      rows =
-        [...historyEvents];
-
-    } else if (
-      sel === "todos"
-    ) {
-      rows =
-        await fetchAllHistory(
-          (n, t) => {
-            $("export-estado").textContent =
-              `Cargando ${n.toLocaleString("es-AR")} de ${t.toLocaleString("es-AR")} registros…`;
-          }
-        );
-
-    } else {
-      const data =
-        await fetchHistoryBatch(
-          Number(sel),
-          0
-        );
-
-
-      rows =
-        Array.isArray(data.eventos)
-          ? data.eventos
-          : [];
-    }
-
-
-    if (!rows.length) {
-      $("export-estado").textContent =
-        "No hay registros para exportar";
-
+  const p = new URLSearchParams({ formato });
+  if (sel in EXPORT_RANGOS) {
+    p.set("desde", new Date(Date.now() - EXPORT_RANGOS[sel]).toISOString());
+  } else if (sel === "fechas") {
+    const desde = fechaLocal($("export-desde").value, false);
+    const hasta = fechaLocal($("export-hasta").value, true);
+    if (!desde && !hasta) {
+      $("export-estado").textContent = "Elegí al menos una fecha";
       return;
     }
-
-
-    const now =
-      new Date();
-
-
-    const d =
-      `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-
-
-    if (
-      $("export-formato").value === "json"
-    ) {
-      downloadFile(
-        `alertar_eventos_${d}.json`,
-        JSON.stringify(
-          rows,
-          null,
-          2
-        ),
-        "application/json;charset=utf-8"
-      );
-
-    } else {
-      downloadFile(
-        `alertar_eventos_${d}.csv`,
-        "\uFEFF" +
-        csvFromRows(rows),
-        "text/csv;charset=utf-8"
-      );
+    if (desde && hasta && desde > hasta) {
+      $("export-estado").textContent = "La fecha inicial es posterior a la final";
+      return;
     }
+    if (desde) p.set("desde", desde.toISOString());
+    if (hasta) p.set("hasta", hasta.toISOString());
+  }
+  const a = document.createElement("a");
+  a.href = `/api/pasos/${encodeURIComponent(currentTunnel)}/exportar?${p}`;
+  a.download = "";
+  document.body.append(a);
+  a.click();
+  a.remove();
+  $("export-estado").textContent = "Descarga iniciada; el progreso se ve en el navegador";
+}
 
-
-    $("export-estado").textContent =
-      `${rows.length.toLocaleString("es-AR")} registros exportados`;
-
-  } catch (e) {
-    console.error(e);
-
-    $("export-estado").textContent =
-      "No se pudo completar la exportación";
-
-  } finally {
-    exportLoading = false;
-
-    $("exportar").disabled =
-      false;
-
-    $("export-formato").disabled =
-      false;
-
-    $("export-cantidad").disabled =
-      false;
+function actualizarSelectorExport() {
+  const fechas = $("export-cantidad").value === "fechas";
+  $("export-fechas").hidden = !fechas;
+  if (fechas && !$("export-hasta").value) {
+    const hoy = new Date();
+    const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    $("export-hasta").value = iso(hoy);
+    $("export-desde").value = iso(new Date(hoy.getTime() - 6 * 86400000));
   }
 }
 
@@ -1540,6 +1464,8 @@ $("exportar")
     "click",
     exportHistory
   );
+
+$("export-cantidad").addEventListener("change", actualizarSelectorExport);
 
 
 $("stats-actualizar")

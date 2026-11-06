@@ -29,6 +29,18 @@ def hash_clave(clave):
     return "sha256:" + hashlib.sha256(clave.encode()).hexdigest()
 
 
+def _limite(variable, defecto):
+    """Lee "ritmo,ráfaga" desde el entorno; si falta o es inválido usa el valor por defecto."""
+    texto = os.environ.get(variable, "")
+    try:
+        ritmo, rafaga = (float(x) for x in texto.split(","))
+        if ritmo > 0 and rafaga >= 1:
+            return ritmo, rafaga
+    except ValueError:
+        pass
+    return defecto
+
+
 def utcnow():
     return datetime.now(timezone.utc)
 
@@ -98,6 +110,17 @@ def create_app(config=None):
         API_KEY=os.environ.get("ALERTAR_API_KEY", ""),
         DEVICE_KEY=os.environ.get("ALERTAR_DEVICE_KEY", ""),
         RATE_LIMIT_ENABLED=True,
+        # Límites globales por proceso: (pedidos por segundo, ráfaga). Valores pensados para un
+        # servidor (decenas de ESP32 y paneles abiertos). En la Raspberry Pi se bajan desde el
+        # entorno (deploy/raspi/limites.conf). Formato de las variables: "ritmo,ráfaga".
+        RATE_LIMITS={
+            "ingesta": _limite("ALERTAR_LIMITE_INGESTA", (20, 60)),
+            "lectura": _limite("ALERTAR_LIMITE_LECTURA", (30, 90)),
+            "login": _limite("ALERTAR_LIMITE_LOGIN", (0.1, 5)),
+            "admin": _limite("ALERTAR_LIMITE_ADMIN", (2, 10)),
+        },
+        # Pedidos atendidos a la vez; el resto recibe 429 en lugar de acumularse.
+        CONCURRENCIA=int(os.environ.get("ALERTAR_CONCURRENCIA", "16")),
         ENABLE_SIMULATOR=os.environ.get("ALERTAR_ENABLE_SIMULATOR", "0") == "1",
         # SOLO PARA LA DEMO: guarda también la clave de cada dispositivo para mostrarla en el
         # panel (columna tuneles.clave_demo). La autenticación sigue usando únicamente el hash.
@@ -148,6 +171,9 @@ def create_app(config=None):
                 longitud REAL
             );
         """)
+        # Índices para estado, historial y estadísticas por paso (se crean una sola vez).
+        connection.execute("CREATE INDEX IF NOT EXISTS eventos_paso_secuencia ON eventos(paso_id, secuencia)")
+        connection.execute("CREATE INDEX IF NOT EXISTS eventos_paso_recibido ON eventos(paso_id, recibido_en)")
         columnas = {r["name"] for r in connection.execute("PRAGMA table_info(tuneles)")}
         # clave_demo: copia de la clave del dispositivo, solo para la demo (ver DEMO_GUARDAR_CLAVES).
         for nombre, tipo in (("ubicacion", "TEXT"), ("latitud", "REAL"), ("longitud", "REAL"), ("clave_demo", "TEXT")):

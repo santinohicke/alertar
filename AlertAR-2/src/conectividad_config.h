@@ -35,6 +35,6 @@ constexpr unsigned TIMEOUT_TLS_S = 120; // Cálculo criptográfico lento en el s
 constexpr unsigned SINCRONIZACION_RELOJ_MS = 5 * 60 * 1000;
 constexpr unsigned RESERVA_SECUENCIAS = 1024;
 constexpr unsigned ENTRE_ENVIOS_MS = 3000;
-constexpr unsigned RECUPERACION_MS = 1000; // Con backlog: hasta 1 evento/s, debajo del límite API de 2/s.
+constexpr unsigned RECUPERACION_MS = 1000; // Con backlog: hasta 1 evento/s por dispositivo.
 constexpr unsigned DIAGNOSTICO_MS = 10000;
 }

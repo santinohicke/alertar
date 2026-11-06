@@ -28,6 +28,8 @@ Este modo de desarrollo no exige autenticación y solo escucha en `127.0.0.1`. W
 | `ALERTAR_DEVICE_KEY` | Clave inicial de `tunel-01`. Si falta, se genera una aleatoria; las demás claves se crean desde el panel. |
 | `ALERTAR_DATABASE` | Ruta de la base SQLite. |
 | `ALERTAR_DEMO_CLAVES` | **Solo rama `demo`.** `1` (por defecto) guarda también la clave de cada dispositivo en `tuneles.clave_demo` para mostrarla en el panel. Antes de un uso real: `0` y vaciar esa columna. |
+| `ALERTAR_LIMITE_INGESTA`, `ALERTAR_LIMITE_LECTURA`, `ALERTAR_LIMITE_ADMIN`, `ALERTAR_LIMITE_LOGIN` | Límites globales del proceso como `ritmo,ráfaga` (pedidos por segundo). Por defecto `20,60`, `30,90`, `2,10` y `0.1,5`, pensados para un servidor con decenas de ESP32 y paneles abiertos. La Raspberry Pi usa `2,4`, `4,8`, `0.5,6` desde `deploy/raspi/limites.conf`. |
+| `ALERTAR_CONCURRENCIA` | Pedidos atendidos a la vez (por defecto 16; la Pi usa 4). Conviene igualarlo a los hilos de gunicorn. |
 | `ALERTAR_ENABLE_SIMULATOR` | `1` habilita `/api/simulador/*` (solo para desarrollo; inserta eventos falsos). |
 
 Las claves de dispositivo se guardan como hash; la clave en claro solo se muestra al crearla o reemplazarla. Las escrituras de administración desde el panel exigen el encabezado `X-CSRF-Token`.
@@ -64,6 +66,10 @@ Todos los campos de `examples/evento.json` son obligatorios; campos adicionales 
 | `agua_activa`, `agua_pendiente` | Booleanos; no pueden ser ambos verdaderos. |
 
 Los identificadores admiten 1–80 letras ASCII, números, guion o guion bajo. La secuencia y el uptime admiten 0 a 2^63−1. El backend registra por separado `recibido_en` en UTC.
+
+## Estadísticas
+
+`GET /api/pasos/<paso_id>/estadisticas?rango=1h|6h|24h|7d|all` devuelve un resumen calculado en el servidor: totales, tiempo por código (cada evento cuenta hasta 15 s o hasta el siguiente), bloques de actividad con el tiempo por severidad, la franja de estado y una serie de obstrucción reducida a 600 puntos que conserva el máximo de cada bloque. El panel ya no descarga el historial completo para esta vista. El resultado se guarda 10 s en memoria para que varios paneles compartan el cálculo.
 
 ## Entrega, orden y actualidad
 

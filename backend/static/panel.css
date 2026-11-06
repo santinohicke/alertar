@@ -838,7 +838,10 @@ tr.detail-row:hover td { background: var(--bg); }
 
 .hover-band { fill: rgba(255, 255, 255, .04); }
 .crosshair { stroke: var(--text-3); stroke-width: 1; }
-.hit { fill: transparent; cursor: crosshair; }
+.hit { fill: transparent; pointer-events: all; cursor: crosshair; }
+.hit-bar { cursor: pointer; outline: none; }
+.bar.pinned { fill: var(--accent); }
+.crosshair.pinned { stroke: var(--text-2); }
 
 .line { fill: none; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
 .line-c1 { stroke: var(--c1); }

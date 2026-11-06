@@ -1083,9 +1083,21 @@ function renderActivity(agg, animate) {
   });
 
   // Interacción: un área por bloque
+  // Interacción: el mouse muestra una vista previa; el click fija el bloque hasta otro click.
   const readout = $("stats-actividad-detalle");
-  const defaultText = "";
-  let hot = null;
+  const reparto = b => {
+    const covered = b.ok + b.warn + b.crit + b.unknown;
+    const parts = [["ok", "habilitado"], ["warn", "precaución"], ["crit", "cerrado"]]
+      .filter(([k]) => b[k] > 0)
+      .map(([k, name]) => `${name} ${pct(b[k], covered)}`);
+    return parts.length ? ` · ${parts.join(" · ")}` : " · sin datos de estado";
+  };
+  const total = pts.reduce((acc, [, b]) => {
+    for (const k of ["n", "ok", "warn", "crit", "unknown"]) acc[k] += b[k];
+    return acc;
+  }, { n: 0, ok: 0, warn: 0, crit: 0, unknown: 0 });
+  const resumen = `Todo el rango · ${total.n.toLocaleString("es-AR")} eventos${reparto(total)}`;
+  let hot = null, fijo = null;
   const show = i => {
     const [ts, b] = pts[i];
     if (hot) hot.classList.remove("hot");
@@ -1094,31 +1106,37 @@ function renderActivity(agg, animate) {
     band.setAttribute("x", L + i * bw);
     band.setAttribute("width", bw);
     band.setAttribute("visibility", "visible");
-    const covered = b.ok + b.warn + b.crit + b.unknown;
-    const parts = [["ok", "habilitado"], ["warn", "precaución"], ["crit", "cerrado"]]
-      .filter(([k]) => b[k] > 0)
-      .map(([k, name]) => `${name} ${pct(b[k], covered)}`);
     const range = `${activityLabel(ts, ms)} – ${activityLabel(ts + ms, ms)}`;
-    readout.textContent = `${range} · ${b.n.toLocaleString("es-AR")} eventos` +
-      (parts.length ? ` · ${parts.join(" · ")}` : " · sin datos de estado");
+    readout.textContent = `${range} · ${b.n.toLocaleString("es-AR")} eventos${reparto(b)}`;
   };
-  const hide = () => {
+  const volver = () => {
+    if (fijo !== null) { show(fijo); return; }
     if (hot) hot.classList.remove("hot");
     hot = null;
     band.setAttribute("visibility", "hidden");
-    readout.textContent = defaultText;
+    readout.textContent = resumen;
+  };
+  const fijar = i => {
+    if (fijo !== null) barEls[fijo].classList.remove("pinned");
+    fijo = fijo === i ? null : i;
+    if (fijo !== null) barEls[fijo].classList.add("pinned");
+    volver();
   };
   pts.forEach((_, i) => {
-    const hit = svgEl("rect", { x: L + i * bw, y: 0, width: bw, height: T + PH, tabindex: "0" }, "hit");
+    const hit = svgEl("rect", { x: L + i * bw, y: 0, width: bw, height: T + PH, tabindex: "0", role: "button" }, "hit hit-bar");
     hit.addEventListener("mouseenter", () => show(i));
     hit.addEventListener("focus", () => show(i));
-    hit.addEventListener("click", () => show(i));
+    hit.addEventListener("blur", volver);
+    hit.addEventListener("click", () => fijar(i));
+    hit.addEventListener("keydown", ev => {
+      if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); fijar(i); }
+    });
     svg.append(hit);
   });
-  svg.addEventListener("mouseleave", hide);
+  svg.addEventListener("mouseleave", volver);
 
   box.replaceChildren(svg);
-  readout.textContent = defaultText;
+  readout.textContent = resumen;
 }
 
 
@@ -1232,10 +1250,15 @@ function renderObstruction(agg, animate) {
     return Math.abs(pts[lo].t - t) <= Math.abs(pts[hi].t - t) ? pts[lo] : pts[hi];
   };
   const cm = v => v === null ? "sin lectura" : `${num1(v)} cm`;
-  hit.addEventListener("mousemove", ev => {
+  const maximo = v => v === null || v === undefined ? "sin lecturas" : `${num1(v)} cm`;
+  const resumen = `Máximo del rango · Carril 1: ${maximo(agg.carril1.maximo)} · Carril 2: ${maximo(agg.carril2.maximo)}`;
+  let fijo = null;
+  const puntoEn = ev => {
     const rect = svg.getBoundingClientRect();
     const px = (ev.clientX - rect.left) * (W / rect.width);
-    const p = nearest(minT + (px - L) / pw * span);
+    return nearest(minT + (px - L) / pw * span);
+  };
+  const mostrar = p => {
     const cx = x(p.t);
     cross.setAttribute("x1", cx);
     cross.setAttribute("x2", cx);
@@ -1248,13 +1271,23 @@ function renderObstruction(agg, animate) {
     }
     readout.textContent = `${new Date(p.t).toLocaleString("es-AR", H23)} · Carril 1: ${cm(p.c1)} · Carril 2: ${cm(p.c2)}` +
       (p.tEnd > p.t ? " · máximo del intervalo" : "");
-  });
-  hit.addEventListener("mouseleave", () => {
+  };
+  const volver = () => {
+    if (fijo) { mostrar(fijo); return; }
     [cross, d1, d2].forEach(n => n.setAttribute("visibility", "hidden"));
-    readout.textContent = defaultText;
+    readout.textContent = resumen;
+  };
+  hit.addEventListener("mousemove", ev => mostrar(puntoEn(ev)));
+  hit.addEventListener("click", ev => {
+    const p = puntoEn(ev);
+    fijo = fijo && fijo.t === p.t ? null : p;
+    cross.classList.toggle("pinned", !!fijo);
+    volver();
   });
+  hit.addEventListener("mouseleave", volver);
 
   box.replaceChildren(svg);
+  readout.textContent = resumen;
 
   if (animate) {
     for (const path of lines) {

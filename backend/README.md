@@ -94,4 +94,4 @@ cd backend
 .venv/bin/python -m unittest discover -s tests -v
 ```
 
-Las pruebas usan bases temporales bajo `backend/.test-tmp`, sin alterar la base de uso normal. Son 45 y cubren persistencia, contrato, duplicados, conflictos, actualidad, autenticación, separación de permisos, panel, borrado con CSRF, cálculo y endpoint de estadísticas, y límites de ritmo (por defecto y desde el entorno). No sustituyen la validación prolongada de Wokwi → HTTPS → servidor.
+Las pruebas usan bases temporales bajo `backend/.test-tmp`, sin alterar la base de uso normal. Son 44 y cubren persistencia, contrato, duplicados, conflictos, actualidad, autenticación, separación de permisos, panel, borrado con CSRF, cálculo y endpoint de estadísticas, y límites de ritmo (por defecto y desde el entorno). No sustituyen la validación prolongada de Wokwi → HTTPS → servidor.

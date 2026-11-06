@@ -140,4 +140,4 @@ Para ejecutar la API en desarrollo local, ver [backend/README.md](backend/README
 ## Pruebas
 
 - `tests/`: lógica de estados, cola y contrato del firmware (C++).
-- `backend/tests/`: 45 pruebas de API, panel, autenticación, estadísticas, borrado y límites de ritmo (`.venv/bin/python -m unittest discover -s tests` desde `backend/`).
+- `backend/tests/`: 44 pruebas de API, panel, autenticación, estadísticas, borrado y límites de ritmo (`.venv/bin/python -m unittest discover -s tests` desde `backend/`).

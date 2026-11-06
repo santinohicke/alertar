@@ -5,7 +5,7 @@
 | Componente | Ubicación | Estado |
 |---|---|---|
 | Sensores, lógica local, LEDs y LCD | `AlertAR-2/src/` | Implementados y probados en la simulación de Wokwi |
-| Wi-Fi, NTP, HTTPS, cola en LittleFS y reintentos | `AlertAR-2/src/` | Implementados; entregas continuas observadas, sin validación prolongada formal |
+| Wi-Fi, NTP, HTTPS, cola en LittleFS y reintentos | `AlertAR-2/src/` | Implementados; entregas continuas al servidor |
 | API de eventos, reservas y SQLite | `backend/app.py` | Implementada y publicada en el servidor |
 | Autenticación, claves por paso, límites de ritmo | `backend/panel.py` | Implementados |
 | Estadísticas y exportación en el servidor | `backend/estadisticas.py`, `backend/panel.py` | Implementadas |
@@ -21,9 +21,6 @@
 
 ## Pendiente
 
-- Validación prolongada de la comunicación Wokwi → HTTPS → servidor y del comportamiento de la cola con cortes largos.
-- Un reinicio del simulador con aviso de watchdog observado en septiembre.
 - Validación física de sensores, actuadores y alimentación en hardware real.
-- En la Raspberry Pi, los límites de memoria de systemd no se aplicaban (controlador de memoria deshabilitado en el arranque).
 
 Ver [arquitectura.md](arquitectura.md) para el recorrido completo de los datos.

@@ -7,8 +7,8 @@ La conectividad está en `AlertAR-2/src/conectividad.cpp`, `conectividad_config.
 | Dónde | Qué | En Git |
 |---|---|---|
 | `include/conectividad_secrets.h` (copia de `conectividad_secrets.example.h`) | `ALERTAR_CONECTIVIDAD_HABILITADA`, URL de eventos, URL de reserva (lleva el `dispositivo_id`) y `ALERTAR_DEVICE_KEY` | No, está ignorado |
-| `src/conectividad_config.h` | `DISPOSITIVO`, `PASO`, red Wi-Fi y tiempos | Sí |
-| `src/certificado.h` | Raíz pública ISRG Root X2 de Let's Encrypt | Sí |
+| `src/conectividad_config.h` | `DISPOSITIVO`, `PASO`, red Wi-Fi y tiempos. `ALERTAR_MUESTRA_MS` fija el intervalo de las muestras periódicas: 15 s en `main`, 5 s en `demo` | Sí |
+| `src/certificado.h` | Raíces públicas Root YE e ISRG Root X2 de Let's Encrypt | Sí |
 
 La clave de dispositivo es la del paso creado en el panel; nunca la clave administrativa. Si la clave está vacía, el ESP32 mide y guarda pero no envía. Para un paso nuevo hay que cambiar la clave, la URL de reserva, `DISPOSITIVO` y `PASO`, y volver a compilar.
 
@@ -17,7 +17,7 @@ La clave de dispositivo es la del paso creado en el panel; nunca la clave admini
 ```text
 loop() ──observar()──► cola RAM (64) ──tarea "registro"──► LittleFS /pendientes (128)
                                                                   │
-                                       tarea "envio": Wi-Fi + NTP + TLS + HTTP POST
+                                       tarea "envio": Wi-Fi + NTP + TLS + POST por lotes
                                                                   │ ACK
                                                         LittleFS /enviados (últimos 16)
 ```
@@ -28,7 +28,9 @@ loop() ──observar()──► cola RAM (64) ──tarea "registro"──► L
 
 - es la primera desde el encendido, o
 - cambió el código, la validez de algún sensor o el estado del agua (confirmada o pendiente), o
-- pasaron **15 s** desde la última muestra (muestra periódica).
+- pasaron **15 s** desde la última muestra (muestra periódica; `ALERTAR_MUESTRA_MS`, 5 s en la rama `demo`).
+
+Con el reloj sincronizado el intervalo se mide en hora real. Wokwi simula más lento que el tiempo real (entre 64 % y 93 % medido), y con `millis()` las muestras de 5 s salían cada 6 a 8 s reales. Sin hora, o si el reloj saltó hacia atrás, se usa `millis()`.
 
 La muestra toma en ese momento la hora (`time()`), el `uptime_ms`, el código, el diagnóstico, las alturas y el agua. Si la cola en RAM (64 lugares) está llena, la muestra nueva se descarta y se cuenta en `descartados`.
 
@@ -48,16 +50,24 @@ La muestra toma en ese momento la hora (`time()`), el `uptime_ms`, el código, e
 La tarea `registro` (núcleo 0, prioridad 1) toma las muestras de la cola RAM, las convierte en JSON y las guarda en LittleFS:
 
 - Cada evento es un archivo `/pendientes/<secuencia de 20 dígitos>.log`. Se escribe primero en un temporal, se vuelve a leer para compararlo y recién entonces se renombra: un corte de energía no deja un archivo a medias.
-- Hasta **128 pendientes**. Con la cola llena, el evento espera y se reintenta cada 1 s sin descartarlo; mientras tanto se descartan las muestras nuevas de la cola RAM. A una muestra cada 15 s, 128 eventos cubren unos 32 minutos sin conexión; los cambios de estado acortan ese margen.
+- Hasta **128 pendientes**. Con la cola llena, el evento espera y se reintenta cada 1 s sin descartarlo; mientras tanto se descartan las muestras nuevas de la cola RAM. A una muestra cada 15 s, 128 eventos cubren unos 32 minutos sin conexión (unos 10 minutos a 5 s); los cambios de estado acortan ese margen.
 - Los confirmados pasan a `/enviados`, donde se conservan los últimos 16.
 
 ### 4. Reloj
 
-El ESP32 sincroniza la hora con `pool.ntp.org` y `time.nist.gov` y vuelve a hacerlo cada **5 minutos** (en Wokwi el reloj simulado se desvía). Sin hora válida no hace pedidos HTTP: los eventos esperan en la cola. Si la computadora que corre Wokwi se suspende, la cola se acumula y al volver se envía con atraso; el servidor los guarda con su hora de medición original y el panel los muestra como desactualizados.
+El ESP32 sincroniza la hora con `pool.ntp.org` y `time.nist.gov` y vuelve a hacerlo cada **5 minutos**. Al conectarse el Wi-Fi vuelve a pedirla en el momento: el primer pedido sale antes de tener red y lwIP no reintenta hasta 15 s después. Sin hora válida no hace pedidos HTTP: los eventos esperan en la cola, y esa espera no cuenta como fallo (no activa la espera creciente).
+
+Cada respuesta `201` del servidor trae `recibido_en`. Si el reloj del ESP32 se aleja más de 0,3 s de esa hora (corregida por la mitad de la duración del pedido, solo en pedidos de menos de 3 s), se ajusta. En Wokwi el reloj simulado se atrasa entre sincronizaciones NTP: sin este ajuste, `medido_en` llegaba 17 a 25 s atrasado y cada vez más; con él queda entre 1 y 4 s. Si la computadora que corre Wokwi se suspende, la cola se acumula y al volver se envía con atraso; el servidor los guarda con su hora de medición original y el panel los muestra como desactualizados.
 
 ### 5. Wi-Fi y TLS (tarea `envio`)
 
-La tarea `envio` (núcleo 0, prioridad mínima, para no competir con la lógica) se conecta a `Wokwi-GUEST` y reintenta cada 15 s si se cae. La conexión HTTPS valida el certificado del servidor contra la raíz de `certificado.h`; **nunca** se desactiva esa validación. El handshake TLS tiene hasta 120 s (el simulador es lento para la criptografía) y cada pedido HTTP 5 s.
+La tarea `envio` (núcleo 0, prioridad 1; la lógica corre en el núcleo 1) se conecta a `Wokwi-GUEST` y reintenta cada 15 s si se cae. La conexión HTTPS valida el certificado del servidor contra las raíces de `certificado.h`; **nunca** se desactiva esa validación. Root YE es la raíz de la cadena actual de Let's Encrypt: confiar en ella ahorra una verificación de firma P-384 en el handshake. No se fijan intermedios porque rotan.
+
+El handshake TLS tiene hasta 120 s (el simulador es lento para la criptografía) y cada pedido HTTP 15 s. Antes la tarea corría con la prioridad de la tarea idle para no disparar el watchdog, pero en este SDK la tarea idle no cede su turno y el TLS recibía la mitad del núcleo 0. Ahora el watchdog de tareas está en 180 s, por encima del handshake más largo, y sigue reiniciando la placa si el núcleo 0 se cuelga.
+
+La conexión se mantiene abierta entre pedidos (el servidor la conserva más de 35 s sin uso). Solo se cierra ante un error de red: si el servidor respondió, aunque sea un 429 o un 500, se reutiliza y no hace falta otro handshake.
+
+En Wokwi, desde que arranca la simulación con la flash vacía hasta el primer evento confirmado pasan unos 38 a 49 s reales (antes, unos 92 s). Casi todo es el handshake.
 
 ### 6. Reserva de secuencias
 
@@ -65,16 +75,18 @@ Antes del primer envío de cada encendido, el ESP32 llama a la URL de reserva co
 
 ### 7. Envío y confirmación
 
-`POST` a la URL de eventos con `Content-Type: application/json` y `X-API-Key: <clave del dispositivo>`, de a un evento, empezando por la secuencia más baja. El evento se retira de `/pendientes` **solo** con un ACK válido: código 200 o 201 y cuerpo con `"guardado": true` y el mismo `evento_id`.
+Cada pedido lleva hasta **9 eventos** a `<URL de eventos>/lote` (`POST /api/eventos/lote`, ver [api.md](api.md#lotes)) con `Content-Type: application/json` y `X-API-Key: <clave del dispositivo>`. El primero es el **más nuevo**, así el panel muestra el estado actual con el primer pedido; los demás son los más viejos, en orden, para ir completando el historial. Con un solo pendiente se usa `POST /api/eventos`.
+
+Un evento se retira de `/pendientes` **solo** con su ACK: código 200 o 201 y, para ese evento, `"guardado": true` y el mismo `evento_id`. Si el servidor no tiene la ruta de lotes (401, 404 o 405 en esa ruta), el ESP32 sigue de a uno por `/api/eventos`, siempre el más nuevo primero.
 
 | Respuesta | Qué hace el ESP32 |
 |---|---|
-| 201 o 200 con ACK | Mueve el evento a `/enviados`; espera 1 s si quedan pendientes o 3 s si no |
+| 201 o 200 con ACK de todos | Mueve los eventos a `/enviados` y espera 1 s antes del siguiente pedido |
 | 200/201 sin ACK válido, otros códigos, error de red | Reintenta con espera creciente: 1, 2, 4, 8, 16 y 32 s |
 | 429 o 503 | Espera lo que indique `Retry-After` (entre 5 y 60 s; 5 si no viene) o la espera creciente, lo que sea mayor |
-| 400, 401, 403, 409, 413, 422 | Error permanente (contrato, clave o identidad): **bloquea** el envío y conserva el evento hasta corregir la configuración y escribir `/reintentar` en el monitor serie |
+| 400, 401, 403, 409, 413, 422 (del pedido o de un evento del lote) | Error permanente (contrato, clave o identidad): confirma los eventos que sí se guardaron, **bloquea** el envío y conserva el resto hasta corregir la configuración y escribir `/reintentar` en el monitor serie |
 
-Con cola acumulada, cada ESP32 envía como máximo un evento por segundo. El servidor acepta 20 eventos/s entre todos los dispositivos (ver [api.md](api.md#límites-de-ritmo)).
+Cada ESP32 hace como máximo un pedido por segundo; con cola acumulada eso son hasta 9 eventos por segundo. El servidor acepta 20 pedidos/s entre todos los dispositivos (ver [api.md](api.md#límites-de-ritmo)); un lote cuenta como un pedido.
 
 ## Comandos por el monitor serie
 
@@ -84,9 +96,11 @@ Con cola acumulada, cada ESP32 envía como máximo un evento por segundo. El ser
 | `/reintentar` | Desbloquea el envío después de un error permanente |
 | `/reiniciar` | Reinicia el ESP32 |
 
-Cada 10 s el ESP32 imprime una línea JSON de diagnóstico con el estado de la conexión: Wi-Fi, bloqueo, pendientes, cola RAM, confirmados, descartados, último código HTTP, duración del envío y memoria libre. No se envía al servidor.
+Cada 10 s el ESP32 imprime una línea JSON de diagnóstico con el estado de la conexión: Wi-Fi, reloj, bloqueo, pendientes, cola RAM, confirmados, descartados, último código HTTP, duración del envío, `primer_ack_ms` (cuándo se confirmó el primer evento), `lote_max`, `ajustes_reloj` y `desfase_reloj_ms`, pila libre de cada tarea (`pila_envio`, `pila_registro`) y memoria libre. No se envía al servidor.
 
 ## Limitaciones conocidas
 
 - Wokwi puede recrear la flash al iniciar una sesión nueva: se pierden los pendientes que no se hayan enviado, aunque la reserva evita reutilizar secuencias.
+- Wokwi simula más lento que el tiempo real. El intervalo de las muestras y la hora de medición se corrigen (ver arriba), pero el `uptime_ms` es tiempo simulado.
+- La partición LittleFS es de 384 KB (antes 2,5 MB). Un ESP32 real grabado con la tabla anterior debe borrarse por completo antes de grabar este firmware; si no, LittleFS no monta y no se envía nada.
 - El comportamiento en hardware real no está validado. Ver [estado.md](estado.md).

@@ -17,7 +17,7 @@ Ninguna clave está en el repositorio. Cada clave se envía en el encabezado `X-
 
 - Se generan en el servidor (`secrets.token_urlsafe`) al crear un paso o al regenerar su clave, y se muestran **una sola vez**.
 - En la base solo queda `sha256:<hash>`. Si alguien copia la base, no obtiene claves utilizables. Como son aleatorias y largas, no hace falta sal.
-- Al recibir un pedido, el servidor calcula el hash de la clave recibida y busca el paso que la tiene. Con ella solo se aceptan `POST /api/eventos` y la reserva, y únicamente para ese paso y ese dispositivo: otro paso → 403.
+- Al recibir un pedido, el servidor calcula el hash de la clave recibida y busca el paso que la tiene. Con ella solo se aceptan `POST /api/eventos`, `POST /api/eventos/lote` y la reserva, y únicamente para ese paso y ese dispositivo: otro paso → 403.
 - Regenerar la clave invalida la anterior de inmediato.
 - Una clave solo vale si su hash está guardado en un paso. `ALERTAR_DEVICE_KEY` se usa únicamente para crear `tunel-01` la primera vez; regenerar la clave de ese paso también la revoca. Una vez creado el paso, conviene quitar la variable del entorno para que no reaparezca si alguna vez se recrea la base.
 

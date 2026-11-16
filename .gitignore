@@ -53,3 +53,7 @@ backups/
 # Evidencia y notas operativas locales (hosts, rutas, IP y diagnosticos)
 verificaciones/
 handoff.md
+
+# Caches de herramientas locales
+**/.wrangler/
+**/.claude/

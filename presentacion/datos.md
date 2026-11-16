@@ -186,3 +186,35 @@ Recopilación de todo lo que puede aparecer en la presentación. Consultado entr
 
 ---
 
+## 9. Negocio
+
+### 9.1 Lo que cuesta no tenerlo
+
+| Dato | Valor | Fuente |
+|---|---|---|
+| Seguro obligatorio: cobertura por **muerte** (2026) | **$20.800.000** por persona (Res. SSN 589/2025) | [Boletín Oficial](https://www.boletinoficial.gob.ar/detalleAviso/primera/333893/20251103), [ST Abogados](https://stabogados.com.ar/civil/accidentes-de-transito/cuanto-paga-el-seguro/) |
+| La misma cobertura desde enero de 2027 | **$27.000.000** por persona (Res. SSN 480/2026) | [iProfesional](https://www.iprofesional.com/autos/468892-seguro-automotor-nuevas-coberturas-montos-franquicias-2027) |
+| Gastos de sepelio (seguro obligatorio 2026) | $533.000 | Res. SSN 589/2025 |
+| Auto con más del 70-80 % bajo el agua | Se suele declarar **destrucción total** | [MDZ](https://www.mdzol.com/sociedad/que-hago-si-mi-auto-quedo-inundado-el-sorpresivo-temporal-buenos-aires-y-como-reclamarle-al-seguro-n1415200), [Perfil](https://www.perfil.com/noticias/sociedad/vehiculos-inundados-en-la-panamericana-que-cubren-los-seguros-y-como-reclamar-por-los-autos-danados.phtml) |
+| Precio promedio de un auto 0 km | Entre unos **$40 y $48,9 millones** (los más vendidos); el más barato, Renault Kwid, $25,54 millones (enero) 🔎 | [iProfesional](https://www.iprofesional.com/autos/445800-dato-sorpresa-que-precio-promedio-pagan-argentinos-pagan-por-autos-camionetas-y-suv), [El Cronista](https://www.cronista.com/informacion-gral/autos-0-km-cuales-son-los-modelos-mas-baratos-en-enero-de-2026-y-que-auto-podes-comprar-con-25-millones) |
+| La Ciudad ya fue condenada por inundaciones | Por no mantener sumideros y la red pluvial; un caso por daños a un auto (BMW) en 2015 | [Diario Judicial](https://www.diariojudicial.com/news-82622-inundados-pero-indemnizados), [Diario Judicial](https://www.diariojudicial.com/news-100101-los-danos-de-las-inundaciones-quien-los-paga) |
+| Granizo e inundaciones 2026 | La Segunda registró **108 % más** denuncias por granizo entre julio y octubre de 2026 | [La Gaceta](https://www.lagaceta.com.ar/nota/1161344/sociedad/super-nino-obligo-reconfigurar-esquema-asegurador-autos.html) |
+
+**Comparaciones** ⚠️ (cálculos propios):
+- **Una sola muerte** cubierta por el seguro obligatorio ($20,8 millones) cuesta, ademas de una vida, **1,6 veces** un equipo AlertAR ($12.809.000). Desde 2027 ($27 millones), **2,1 veces**.
+- **Un auto 0 km promedio perdido** (unos $40 millones) equivale a **3,1 equipos**.
+- **Los 29 pasos de CABA** con AlertAR: **$371.461.000** (29 × $12.809.000).
+
+### 9.2 Modelo de negocio (propuesta)
+
+- **Venta del equipo** por paso ($12.809.000, instalado).
+- **Abono mensual** por el panel, el servidor, las actualizaciones y el mantenimiento ($250.000).
+- **Clientes:**
+  - Gobierno de la Ciudad y municipios del conurbano.
+  - Vialidad Nacional y provincial.
+- **Integraciones:**
+  - Waze (Waze for Cities)
+  - Google Maps
+
+---
+

@@ -268,3 +268,50 @@ Orden sugerido para los 10 minutos:
 
 ---
 
+# Anexo
+
+## 12. Fuentes
+
+### Noticias y casos
+
+- Infobae, Berazategui, 11/02/2024: https://www.infobae.com/sociedad/2024/02/11/tragedia-en-berazategui-su-auto-quedo-atascado-en-un-tunel-inundado-por-el-temporal-y-murio-ahogado/
+- El Destape, Berazategui: https://www.eldestapeweb.com/informacion-general/ahogado/un-hombre-murio-ahogado-en-auto-que-se-atasco-en-tunel-inundado-de-berazategui-202421019280
+- El Día, Berazategui: https://www.eldia.com/nota/2024-2-11-3-27-10-murio-al-intentar-cruzar-un-tunel-a-bordo-de-su-auto-policiales
+- Clarín, Berazategui: https://www.clarin.com/sociedad/hombre-murio-berazategui-quedar-atrapado-paso-nivel-inundado-lluvias_0_GKvUrkqgzN.html
+- La Nación, Caballito, 08/02/2024: https://www.lanacion.com.ar/sociedad/el-video-de-un-auto-sumergido-en-un-paso-bajo-nivel-inundado-por-la-intensa-lluvia-en-caballito-nid08022024/
+- Página 12, Caballito: https://www.pagina12.com.ar/711361-un-auto-quedo-flotando-en-un-paso-bajo-nivel-de-caballito-y-
+- Filo News, Spinetta, 14/11/2022: https://www.filo.news/actualidad/Coghlan-el-dramatico-rescate-de-un-auto-que-quedo-atrapado-en-un-tunel-inundado-20221114-0007.html
+- Infobae, tormenta del 25/10/2025: https://www.infobae.com/sociedad/2025/10/25/diluvio-en-el-amba-cayeron-mas-de-100-milimetros-y-hay-inundaciones-calles-cortadas-y-barrios-anegados/
+- Canal 26, taxista en la General Paz: https://www.canal26.com/general/2025/10/25/temporal-en-el-amba-murio-un-taxista-que-quedo-varado-en-la-avenida-general-paz/
+- Infobae, 30 rescates en la Panamericana, 24/12/2025: https://www.infobae.com/sociedad/2025/12/24/lo-que-dejo-el-diluvio-en-el-amba-cortes-de-luz-y-mas-de-30-rescates-en-la-panamericana/
+- La Nación, Temperley, 04/04/2026: https://www.lanacion.com.ar/sociedad/un-fuerte-temporal-azoto-el-amba-y-causo-destrozos-autos-tapados-inundaciones-y-arboles-caidos-nid04042026/
+- Infobae, tormenta de 1985: https://www.infobae.com/sociedad/2025/06/05/autos-ahogados-calles-como-rios-y-catorce-muertos-en-buenos-aires-postales-y-recuerdos-a-40-anos-de-la-tormenta-del-siglo/
+- NWS, Turn Around Don't Drown: https://www.nws.noaa.gov/os/water/tadd/
+- Wikipedia, inundaciones de Henan 2021: https://en.wikipedia.org/wiki/2021_Henan_floods
+- Global Times, túnel Jingguang: https://globaltimes.cn/page/202107/1229456.shtml
+
+### Mercado, clima y competencia
+
+- Ámbito, 29 pasos bajo nivel en CABA: https://www.ambito.com/informacion-general/la-ciudad-comenzo-la-licitacion-un-nuevo-paso-nivel-villa-urquiza-n6212213
+- Infobae, 5 nuevos pasos: https://www.infobae.com/sociedad/2024/07/04/el-gobierno-porteno-construira-cinco-nuevos-pasos-bajo-nivel-en-que-barrios-estaran/
+- Zonales, 26 pasos en el conurbano: https://zonales.com/construiran-pasos-nivel-municipios-conurbano/
+- La Nación, "La ciudad de la lluvia": https://www.lanacion.com.ar/lifestyle/la-ciudad-de-la-lluvia-nid1474027
+- La Nación, Súper Niño (02/11/2026): https://www.lanacion.com.ar/sociedad/verano-con-mas-lluvias-y-menos-calor-que-preve-el-smn-para-los-proximos-tres-meses-y-las-provincias-nid02112026/
+- BAE Negocios, EMDAT: https://www.baenegocios.com/amp/La-provincia-mas-expuesta-al-cambio-climatico-20250923-0174/
+- GovTech, Houston: https://www.govtech.com/em/disaster/Houston-Wins-94-Million-for-Flood-Warning-on-Roads.html
+- Prefectura de Osaka: https://www.pref.osaka.lg.jp/o130070/dorokankyo/underpass/underpass.html
+- Publimetro, Puebla: https://www.publimetro.com.mx/puebla/2026/08/18/semaforos-pluviales-alertaran-sobre-niveles-de-agua-en-zonas-de-riesgo-de-la-capital/
+- GCBA, Centro de Control de AUSA: https://buenosaires.gob.ar/gcaba_historico/noticias/santilli-inauguro-el-centro-de-control-inteligente-para-monitorear-las
+- iProfesional, Waze en Argentina: https://www.iprofesional.com/tecnologia/267757-waze-crece-en-la-argentina-ya-tiene-24-socios-estatales-y-privados-para-mejorar-la-movilidad
+
+### Precios, tarifas y seguros
+
+- Edesur, cuadro tarifario: https://www.edesur.com.ar/tarifas-cuadro-tarifario/
+- El Cronista, UOCRA noviembre 2026: https://www.cronista.com/economia-politica/paritaria-uocra-con-nuevo-aumento-cuanto-cobro-en-noviembre-2026-y-como-quedan-las-escalas/
+- Boletín Oficial, Res. SSN 589/2025: https://www.boletinoficial.gob.ar/detalleAviso/primera/333893/20251103
+- iProfesional, seguro automotor 2027: https://www.iprofesional.com/autos/468892-seguro-automotor-nuevas-coberturas-montos-franquicias-2027
+- Las demás fuentes de precios están en la tabla 5.1.
+
+### Proyecto
+
+- Repositorio: https://github.com/Agusttin-0/AlertAR (documentación en `docs/`: `firmware.md`, `conectividad.md`, `api.md`, `seguridad.md`, `panel.md`, `tabla_logica.md`, `despliegue.md`, `estado.md`)

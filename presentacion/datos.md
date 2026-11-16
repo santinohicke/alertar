@@ -26,3 +26,22 @@ Recopilación de todo lo que puede aparecer en la presentación. Consultado entr
 
 ---
 
+## 2. Contexto: cuántos pasos hay y cada vez llueve más
+
+### 2.1 Cuántos pasos bajo nivel hay
+
+| Dato | Valor | Fuente |
+|---|---|---|
+| Pasos bajo nivel en CABA | **29** | [Ámbito](https://www.ambito.com/informacion-general/la-ciudad-comenzo-la-licitacion-un-nuevo-paso-nivel-villa-urquiza-n6212213) |
+| Nuevos planeados en CABA | **5 más** (llevaría el total a 34) | [Infobae (2024)](https://www.infobae.com/sociedad/2024/07/04/el-gobierno-porteno-construira-cinco-nuevos-pasos-bajo-nivel-en-que-barrios-estaran/) |
+| Conurbano: plan nacional | **26 pasos bajo nivel en 21 municipios** (Mitre, Roca, Belgrano Sur y Norte, San Martín, Sarmiento) 🔎 año del anuncio sin confirmar | [Zonales](https://zonales.com/construiran-pasos-nivel-municipios-conurbano/) |
+
+### 2.2 Clima: llueve cada vez más fuerte
+
+| Dato | Fuente |
+|---|---|
+| El Plan de Acción Buenos Aires 2030 prevé **más frecuencia, duración e intensidad** de eventos extremos | [La Nación](https://www.lanacion.com.ar/lifestyle/la-ciudad-de-la-lluvia-nid1474027) |
+| **Súper Niño 2026:** el SMN pronostica lluvias por encima de lo normal para nov., dic. y ene. en buena parte de la provincia de Buenos Aires | [La Nación (02/11/2026)](https://www.lanacion.com.ar/sociedad/verano-con-mas-lluvias-y-menos-calor-que-preve-el-smn-para-los-proximos-tres-meses-y-las-provincias-nid02112026/), [Ámbito](https://www.ambito.com/informacion-general/el-super-nino-tendra-un-comportamiento-atipico-la-argentina-que-adelanto-el-smn-n6331646) |
+
+---
+

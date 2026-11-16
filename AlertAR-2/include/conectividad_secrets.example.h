@@ -4,4 +4,4 @@
 #define ALERTAR_CONECTIVIDAD_HABILITADA false
 #define ALERTAR_API_URL "https://alertar-api.example.com/api/eventos"
 #define ALERTAR_RESERVA_API_URL "https://alertar-api.example.com/api/dispositivos/esp32-01/reserva"
-#define ALERTAR_DEVICE_KEY "your_secret_device_key_here"
+#define ALERTAR_DEVICE_KEY ""

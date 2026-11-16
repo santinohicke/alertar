@@ -108,3 +108,20 @@ Recopilación de todo lo que puede aparecer en la presentación. Consultado entr
 
 ---
 
+## 6. Cómo funciona por dentro (lógica)
+
+### 6.1 Los 9 estados, agrupados por color
+
+- 🔴 **Rojo (PASO CERRADO):** ERR-001 (agua confirmada 20 s) y ERR-005 (los dos carriles bloqueados 60 s o más).
+- 🟡 **Amarillo (PRECAUCION):** ERR-002 (agua detectada, todavía sin confirmar), ERR-003 (un ultrasónico sin lectura válida), ERR-004 (ambos ocupados y alguno 60 s o más), ERR-006 (un carril con algo de más de 1 m durante 60 s) y ERR-007 (un carril ocupado 60 s o más).
+- 🟢 **Verde (PASO HABILITADO):** OK-001 (ambos carriles libres) e INF-001 (algo pasa por debajo, menos de 60 s: auto circulando).
+
+### 6.2 Por qué es seguro (diseño failsafe)
+
+- **Ante una lectura inválida nunca asume carril libre.**
+- **El agua confirmada manda sobre todo:** el paso sigue cerrado aunque falle un ultrasónico.
+- **Si se corta internet,** el semáforo, la LCD y el cartel siguen funcionando: la decisión la toma el ESP32 en el lugar.
+- **Un auto que pasa no da falsa alarma** (60 s de confirmación), y una salpicadura tampoco (20 s).
+
+---
+

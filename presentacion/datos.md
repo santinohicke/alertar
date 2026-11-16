@@ -218,3 +218,53 @@ Recopilación de todo lo que puede aparecer en la presentación. Consultado entr
 
 ---
 
+# Parte 2: dashboard y demo en vivo (últimos 10 minutos)
+
+## 10. Recorrido del dashboard
+
+Orden sugerido para los 10 minutos:
+1. **Recorrido del panel (unos 3 min):** Monitoreo con el dibujo del túnel, Historial, Estadísticas (gráficos) y Mapa.
+2. **Demo en vivo (unos 6 min):** los 4 integrantes mandan datos desde Wokwi y el proyector muestra cómo cambia el estado y el dibujo del túnel.
+3. **Cierre (1 min):** qué se vio y la invitación a probarlo con el QR.
+
+### 10.1 Qué muestra cada parte
+
+- **Monitoreo:**
+  - Estado del paso: habilitado, precaución, cerrado o sin confirmar.
+  - Diagnóstico, código, hora de la medición y secuencia.
+  - **Dibujo del túnel visto de frente:** semáforo, cartel LED con el texto del estado, cajas por carril con la altura medida (gris si es de paso, amarillo si persiste) y **el agua que sube** según la altura medida. Sensor fallado: carril rayado.
+  - Lecturas de cada carril (0 a 400 cm) y del agua (seco, confirmando, crítica).
+- **Historial:** cada evento con hora de medición y de llegada, código, agua, alturas y secuencia. Paginado. Exporta a **CSV o JSON**.
+- **Estadísticas** (1 h, 6 h, 24 h, 7 días o todo):
+  - Tiempo en cada estado.
+  - Franja habilitado/precaución/cerrado.
+  - Eventos por hora.
+  - Obstrucción por carril (promedio y máximo).
+  - Sensores válidos.
+  - Comunicación con el ESP32.
+- **Mapa** esquemático de la Ciudad con la ubicación y el estado de cada paso.
+- **Administración** (con sesión): agregar pasos (**dirección y punto en el mapa obligatorios**), ver datos y clave del dispositivo, borrar pasos.
+- **Vigencia:**
+  - Si la última medición tiene más de **60 s**, el panel deja de colorear el estado y muestra "Sin confirmar", para que nadie tome un dato viejo como bueno.
+  - Si el panel no puede consultar la API por más de 30 s, avisa "Verificando vigencia de los datos".
+- **Se actualiza solo** cada 5 s.
+
+---
+
+## 11. Demo en vivo
+
+- Panel: **https://alertar.pages.dev**, con el QR en pantalla.
+- Cada integrante con su túnel en Wokwi (tunel-01 a tunel-04), cada uno con **su propia clave** (las claves no van en la presentación).
+- Arrancar Wokwi **5 minutos antes**: la primera conexión segura tarda hasta 1 minuto.
+- **Casos a mostrar:**
+  1. Paso libre (verde).
+  2. Auto que pasa (sigue verde).
+  3. Camión atascado más de 1 minuto (amarillo).
+  4. Inundación: el agua sube en el dibujo y el paso queda cerrado (rojo).
+  5. Corte de internet (`/wifi off`): el semáforo sigue funcionando. Al volver la conexión (`/wifi on`) llegan todos los eventos.
+- **Tiempos a tener en cuenta:** el agua se confirma a los 20 s y la obstrucción a los 60 s. El ESP32 manda cada 5 s o apenas cambia el estado.
+- **Plan B:** video `AlertAR_tunel_demo.mp4`.
+- **Probar esa mañana** el servidor de Agustín con los 4 enviando datos al mismo tiempo.
+
+---
+

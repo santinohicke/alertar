@@ -74,3 +74,37 @@ Recopilación de todo lo que puede aparecer en la presentación. Consultado entr
 
 ---
 
+## 5. Hardware e instalación
+
+### 5.1 Equipo
+
+| # | Ítem | Precio | Fuente |
+|---|---|---|---|
+| 1 | Placa ESP32 | $15.000 | [Mercado Libre](https://listado.mercadolibre.com.ar/esp32) (entre $11.000 y $19.000) |
+| 2 | 2 sensores ultrasónicos impermeables JSN-SR04T | $60.000 | [CVR Electrónica](https://cvrelectronica.com/description/?product_id=1101) ($31.672 c/u) |
+| 3 | Sensor de agua flotante de acero inoxidable | $14.000 | [HobbyTronica](https://www.hobbytronica.com.ar/MLA-1121376073-sensor-nivel-de-agua-45mm-nc-na-acero-inoxidable-flotante-_JM) ($13.990) |
+| 4 | Gabinete estanco IP65 (tipo Roker/Genrod ~300×200 mm) | $65.000 | Mercado Libre Argentina ($55.000 a $75.000) |
+| 5 | Fuente switching cargadora UPS 12 V | $45.000 | Mercado Libre Argentina ($43.000 a $65.000) |
+| 6 | Batería de respaldo gel/AGM 12 V 7 Ah | $30.000 | Mercado Libre Argentina ($25.000 a $35.000, Pronext/Herbo) |
+| 7 | Cartel de mensaje variable LED ámbar de 5,76 x 2,88 m (324 módulos P10, fuentes, controladora y gabinete) | ≈ $9.000.000 ⚠️ | [Mercado Libre, módulos P10](https://listado.mercadolibre.com.ar/modulo-led-p10) (módulo a unos $20.000) |
+| 8 | Semáforo LED vehicular de 300 mm, 3 luces | ≈ $400.000 ⚠️ | [Mercado Libre](https://listado.mercadolibre.com.ar/optica-led-para-semaforo-300mm) (óptica LED de 300 mm a $98.000) |
+| 9 | Hidrogrúa con operador, 1 jornada | ≈ $1.200.000 ⚠️ | [Mercado Libre](https://listado.mercadolibre.com.ar/alquiler-de-hidrogrua) |
+| 10 | Mano de obra: 2 oficiales especializados y 1 ayudante, 3 días | ≈ $1.280.000 ⚠️ | Hora básica UOCRA, Zona A, nov. 2026: oficial especializado $7.828, ayudante $5.696 ([El Cronista](https://www.cronista.com/economia-politica/paritaria-uocra-con-nuevo-aumento-cuanto-cobro-en-noviembre-2026-y-como-quedan-las-escalas/)); × 24 h × 2,5 de cargas y ganancia |
+| 11 | Instalación eléctrica: 50 m de cable subterráneo, cañería, tablero y protecciones | ≈ $700.000 ⚠️ | Cable 3×4 mm² a $5.295/m ([Pelba](https://www.pelba.com.ar/cable-subterraneo-3x4mm-ls0h-iram-62266-catii-1-1kv287/p)); caño de 1" × 3 m a $13.590 ([Easy](https://www.easy.com.ar/caño-hierro-1---25mm--liviano-x-3m/p)) |
+| | **Total sin cartel** | **$3.809.000 por paso** | |
+| | **Total con cartel** | **$12.809.000 por paso** | |
+
+### 5.2 Instalación propuesta
+
+- **ESP32, fuentes y batería:** en un gabinete estanco.
+- **Mantenimiento**
+- **Energía:** red eléctrica de 220 V, con batería de respaldo para los cortes de luz durante las tormentas. 
+
+### 5.3 Consumo eléctrico
+
+- **Total por paso:** ≈ 8,8 kWh por día ⚠️.
+- Tarifa: Edesur **T1-G1**, **$266 por kWh** más un cargo fijo de $20.000 por mes ([Edesur, Res. ENReGE 887/26](https://www.edesur.com.ar/tarifas-cuadro-tarifario/)).
+- Costo: **cerca de $110.000 por mes** ⚠️.
+
+---
+

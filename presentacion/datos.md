@@ -125,3 +125,64 @@ Recopilación de todo lo que puede aparecer en la presentación. Consultado entr
 
 ---
 
+## 7. Datos y comunicación
+
+### 7.1 El evento que viaja (JSON, contrato v1)
+
+```json
+{
+  "version": 1,
+  "dispositivo_id": "esp32-01",
+  "paso_id": "tunel-01",
+  "evento_id": "esp32-01-<instalacion>-<secuencia>",
+  "arranque_id": "a1b2…",
+  "secuencia": 4294967296001,
+  "uptime_ms": 120000,
+  "medido_en": "2026-11-13T18:09:41Z",
+  "codigo": "ERR-001",
+  "diagnostico": "Agua critica confirmada",
+  "obstruccion_carril1_cm": 70,
+  "obstruccion_carril2_cm": 70,
+  "sensor1_valido": true,
+  "sensor2_valido": true,
+  "agua_activa": true,
+  "agua_pendiente": false
+}
+```
+
+### 7.2 Cuándo se manda
+
+- **En cada cambio de estado**, en el momento.
+- **Cada 15 s** si no cambia nada (5 s en la versión de la presentación).
+- Varios eventos juntos: hasta **9 por pedido** (`/api/eventos/lote`). Primero va el más nuevo, para que el panel muestre el estado actual; después, los viejos en orden.
+
+### 7.3 Si se corta internet (store-and-forward)
+
+- Cola en RAM de **64** y cola en la memoria flash (LittleFS) de **128 eventos**: unos **32 minutos** sin conexión con muestras cada 15 s (unos 10 minutos con las de 5 s).
+- Cada evento se escribe en un archivo temporal, se verifica y recién entonces se renombra: un corte de luz no deja un archivo a medias.
+- Se borra de la memoria **solo cuando el servidor confirma** (ACK `"guardado": true`).
+- Reintentos con espera creciente: 1, 2, 4, 8, 16 y 32 s.
+- Si el servidor está saturado (429/503), espera lo que indique `Retry-After`.
+
+### 7.4 Seguridad
+
+| Medida | Detalle |
+|---|---|
+| Clave por dispositivo | Cada túnel tiene su propia clave (32 caracteres aleatorios) privada, enviada en el encabezado `X-API-Key`. Solo sirve para enviar datos **de su propio paso** |
+| HTTPS obligatorio | El ESP32 valida el certificado del servidor (raíces de Let's Encrypt). **Nunca** se desactiva la validación |
+| Sin datos personales | No hay cámaras, patentes ni datos de conductores |
+
+---
+
+## 8. Tecnología
+
+| Parte | Tecnología |
+|---|---|
+| Firmware | C++ con Arduino Framework, PlatformIO, FreeRTOS (2 tareas en el núcleo 0: guardado y envío; la lógica corre en el núcleo 1) |
+| API | Python, **Flask 3.1.3** |
+| Base de datos | **SQLite** (modo WAL). Tablas: `eventos`, `tuneles`, `instalaciones` |
+| Panel | HTML, CSS y JavaScript propios, sin librerías externas |
+| Servidor | |
+
+---
+

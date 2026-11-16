@@ -45,3 +45,32 @@ Recopilación de todo lo que puede aparecer en la presentación. Consultado entr
 
 ---
 
+## 3. Cómo se resuelve hoy
+
+### 3.1 En Buenos Aires
+
+- **El cierre es manual y llega tarde.** En la tormenta del 25/10/2025, los bajo nivel Mosconi, Cerati y Spinetta se cerraron "hasta que baje el agua", después de que ya estaban inundados ([Infobae](https://www.infobae.com/sociedad/2025/10/25/diluvio-en-el-amba-cayeron-mas-de-100-milimetros-y-hay-inundaciones-calles-cortadas-y-barrios-anegados/)). En Berazategui se investigó si el auto entró cuando ya había vallas ([El Día](https://www.eldia.com/nota/2024-2-11-3-27-10-murio-al-intentar-cruzar-un-tunel-a-bordo-de-su-auto-policiales)).
+- **Alertas meteorológicas:** la Ciudad tiene un protocolo de recorrido preventivo que se activa con los avisos del SMN, con alerta amarilla y roja ([Boletín Oficial CABA](https://documentosboletinoficial.buenosaires.gob.ar/publico/PE-DIS-MJYSGC-DGDCIV-1110-20-ANX.pdf)). El proyecto PREVENIR (SMN y JICA) instaló 18 estaciones y 92 pluviómetros en cuencas del AMBA ([SEDICI](https://sedici.unlp.edu.ar/bitstream/handle/10915/193404/Documento_completo.pdf?sequence=1)). **Ninguno de estos avisa al conductor en la entrada del túnel.**
+- **Waze for Cities:** programa en el que los municipios comparten cierres de calles con Waze. En Argentina tiene 24 socios estatales y privados, entre ellos La Plata, Santa Fe y Salta ([iProfesional](https://www.iprofesional.com/tecnologia/267757-waze-crece-en-la-argentina-ya-tiene-24-socios-estatales-y-privados-para-mejorar-la-movilidad), [Waze](https://webnew.waze.com/wazeforcities)). AlertAR podría mandarle sus cierres automáticos.
+
+---
+
+## 4. La solución: AlertAR
+
+### 4.1 Qué es
+
+| Dato | Valor |
+|---|---|
+| Nombre | **AlertAR** |
+| Qué es | Sistema que detecta agua y bloqueos en pasos bajo nivel, avisa a los conductores en el lugar (semáforo y cartel) y manda los datos a un panel web para el centro de monitoreo |
+
+### 4.2 Qué tiene AlertAR que no tienen los demás
+
+1. **Decide solo en el lugar:** Edge Computing, el ESP32 cierra el paso sin depender de internet, de un operador ni de que llegue la policía.
+2. **Distingue agua de un camión:** dos sensores distintos (ultrasonido y agua) y tiempos de confirmación. Un auto que pasa no da falsa alarma.
+3. **Nunca queda en verde ante una falla:** si un sensor falla, pasa a amarillo.
+4. **No pierde datos** si se corta internet: guarda hasta 128 eventos y los manda cuando vuelve.
+5. **Panel para el centro de monitoreo** con historial, estadísticas y mapa.
+
+---
+

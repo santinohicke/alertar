@@ -70,3 +70,85 @@ const cilindro = (rt, rb, h, material, seg = 32) => {
   return m;
 };
 
+// ---------- Modelos de KiCad ----------
+// Los .wrl de KiCad usan Z hacia arriba y 1 unidad = 2,54 mm. Se devuelven en milímetros,
+// con Y hacia arriba y centrados en X/Z, apoyados en y = 0.
+const vrml = new VRMLLoader();
+function kicad(texto) {
+  const crudo = vrml.parse(texto, "");
+  crudo.rotation.x = -Math.PI / 2;
+  crudo.scale.setScalar(2.54);
+  const envoltura = new THREE.Group();
+  envoltura.add(crudo);
+  envoltura.updateMatrixWorld(true);
+  const b = new THREE.Box3().setFromObject(envoltura);
+  const c = b.getCenter(new THREE.Vector3());
+  crudo.position.set(-c.x, -b.min.y, -c.z);
+  envoltura.traverse(o => {
+    if (o.isMesh) {
+      o.castShadow = true; o.receiveShadow = true;
+      // Los materiales Phong del VRML se ven planos con la iluminación física: se pasan a Standard.
+      const m = o.material;
+      if (m && m.color) {
+        const dorado = m.color.r > 0.6 && m.color.g > 0.45 && m.color.b < 0.35;
+        const metal = dorado || (m.color.r > 0.55 && m.color.g > 0.55 && m.color.b > 0.55);
+        o.material = new THREE.MeshStandardMaterial({
+          color: m.color, roughness: metal ? 0.26 : 0.48, metalness: dorado ? 0.88 : (metal ? 0.78 : 0.12) });
+      }
+    }
+  });
+  return envoltura;
+}
+const tam = o => new THREE.Box3().setFromObject(o).getSize(new THREE.Vector3());
+
+// ESP32 DevKitC armado con piezas reales: módulo WROOM-32, micro USB y dos tiras de 19 pines.
+function crearESP32() {
+  const mm = new THREE.Group();
+  const pcb = caja(55, 1.6, 28, mat(0x18254a, { roughness: 0.45 }), 0.6);
+  pcb.position.y = 0.8;
+  mm.add(pcb);
+  const modulo = kicad(wrlModulo);
+  const t = tam(modulo);
+  if (t.z > t.x) modulo.rotation.y = Math.PI / 2; // el lado largo del módulo, a lo largo de la placa
+  modulo.position.set(13, 1.6, 0);
+  mm.add(modulo);
+  const usb = kicad(wrlUsb);
+  if (tam(usb).x > tam(usb).z) usb.rotation.y = Math.PI / 2;
+  usb.position.set(-25.5, 1.6, 0);
+  mm.add(usb);
+  for (const z of [-12.7, 12.7]) {
+    const pines = kicad(wrlPines19);
+    if (tam(pines).z > tam(pines).x) pines.rotation.y = Math.PI / 2;
+    pines.rotation.x = Math.PI; // los pines salen hacia abajo
+    pines.position.set(0, 0, z);
+    mm.add(pines);
+  }
+  for (const z of [-8, 8]) { // botones EN y BOOT
+    const boton = caja(3.5, 1.4, 6, mat(0xb8bcc2, { metalness: 0.75, roughness: 0.3 }), 0.3);
+    boton.position.set(-19, 2.3, z);
+    mm.add(boton);
+  }
+  const uart = caja(5, 0.9, 5, mat(0x141619, { roughness: 0.35 }), 0.2); // CP2102 USB-UART
+  uart.position.set(-13, 2.05, 0);
+  mm.add(uart);
+  const reg = caja(3.6, 1.5, 6.5, mat(0x181a1e, { roughness: 0.4 }), 0.2); // regulador 3,3 V
+  reg.position.set(-4.5, 2.35, -5.5);
+  mm.add(reg);
+  const disip = caja(1.4, 0.4, 3.2, mat(0xcfd4da, { metalness: 0.85, roughness: 0.25 }), 0.1);
+  disip.position.set(-6.8, 1.8, -5.5);
+  mm.add(disip);
+  const matSmd = mat(0xc89b62, { roughness: 0.4, metalness: 0.3 });
+  for (const [x, z] of [[-8.5, 4.5], [-8.5, 7], [-17.5, -4], [-3.5, 4.5]]) {
+    const smd = caja(1.8, 0.8, 1.0, matSmd, 0.15);
+    smd.position.set(x, 2.0, z);
+    mm.add(smd);
+  }
+  const led = caja(1.6, 0.8, 0.8, mat(0xff3b30, { emissive: 0xff2a1a, emissiveIntensity: 1.1 }), 0.2);
+  led.position.set(-14, 2, -10);
+  mm.add(led);
+  const g = new THREE.Group();
+  mm.scale.setScalar(0.045);
+  g.add(mm);
+  return g;
+}
+

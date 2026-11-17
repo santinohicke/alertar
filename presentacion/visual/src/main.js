@@ -214,3 +214,92 @@ function crearSensorAgua() {
   return g;
 }
 
+// Gabinete estanco abierto (hueco), con la tapa abisagrada atrás.
+// Adentro van la batería de respaldo y la fuente; el ESP32 entra en la animación.
+const GAB = { W: 2.4, H: 0.9, D: 1.2, e: 0.06 };
+function crearGabinete() {
+  const { W, H, D, e } = GAB;
+  const g = new THREE.Group();
+  const gris = mat(0xa4abb3, { roughness: 0.42, metalness: 0.25 });
+  const burleteMat = mat(0x16181c, { roughness: 0.9 });
+  const piso = caja(W, e, D, gris, 0.02);
+  piso.position.y = e / 2;
+  g.add(piso);
+  for (const [w, d, x, z] of [[W, e, 0, D / 2 - e / 2], [W, e, 0, -D / 2 + e / 2], [e, D, W / 2 - e / 2, 0], [e, D, -W / 2 + e / 2, 0]]) {
+    const pared = caja(w, H, d, gris, 0.02);
+    pared.position.set(x, H / 2, z);
+    g.add(pared);
+    const burlete = caja(w * 0.99, 0.022, d * 0.99, burleteMat, 0.005);
+    burlete.position.set(x, H + 0.01, z);
+    g.add(burlete);
+  }
+  const placaMontaje = new THREE.Mesh(new THREE.PlaneGeometry(W - 2 * e, D - 2 * e), mat(0xd06a28, { roughness: 0.55, metalness: 0.2 }));
+  placaMontaje.rotation.x = -Math.PI / 2;
+  placaMontaje.position.y = e + 0.003;
+  placaMontaje.receiveShadow = true;
+  g.add(placaMontaje);
+  const riel = caja(0.95, 0.025, 0.14, mat(0xc4cbd2, { metalness: 0.85, roughness: 0.25 }), 0.005);
+  riel.position.set(0.72, e + 0.015, -0.3);
+  g.add(riel);
+  const tapa = new THREE.Group();
+  const placaTapa = caja(W + 0.04, 0.08, D + 0.04, gris, 0.03);
+  placaTapa.position.set(0, 0.04, (D + 0.04) / 2);
+  tapa.add(placaTapa);
+  // Etiqueta de riesgo eléctrico y cerradura en el frente de la puerta
+  const texRiesgo = (() => {
+    const c = document.createElement("canvas"); c.width = c.height = 128;
+    const x = c.getContext("2d");
+    x.fillStyle = "#f5b400"; x.beginPath(); x.moveTo(64, 10); x.lineTo(118, 112); x.lineTo(10, 112); x.closePath(); x.fill();
+    x.lineWidth = 7; x.strokeStyle = "#141619"; x.stroke();
+    x.fillStyle = "#141619"; x.beginPath();
+    x.moveTo(68, 34); x.lineTo(48, 70); x.lineTo(63, 70); x.lineTo(54, 100); x.lineTo(80, 62); x.lineTo(64, 62); x.closePath(); x.fill();
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+  })();
+  const etqPuerta = new THREE.Mesh(new THREE.PlaneGeometry(0.36, 0.36),
+    new THREE.MeshBasicMaterial({ map: texRiesgo, transparent: true }));
+  etqPuerta.rotation.x = -Math.PI / 2;
+  etqPuerta.rotation.z = Math.PI / 2; // queda derecho cuando el gabinete rota -90° en la pared
+  etqPuerta.position.set(0, 0.083, (D + 0.04) / 2);
+  tapa.add(etqPuerta);
+  const cerradura = cilindro(0.055, 0.055, 0.025, mat(0x22262c, { metalness: 0.7, roughness: 0.3 }), 20);
+  cerradura.position.set(0, 0.09, D - 0.06);
+  tapa.add(cerradura);
+  tapa.position.set(0, H, -D / 2 - 0.02);
+  tapa.rotation.x = -1.9;
+  g.add(tapa);
+  // Batería de respaldo (12 V)
+  const bateria = new THREE.Group();
+  const cuerpo = caja(0.6, 0.5, 0.42, mat(0x1c1e22, { roughness: 0.7 }), 0.03);
+  cuerpo.position.y = 0.25;
+  bateria.add(cuerpo);
+  const franja = caja(0.605, 0.12, 0.425, mat(0x2f6fd6), 0.01);
+  franja.position.y = 0.3;
+  bateria.add(franja);
+  [[-0.18, 0xd63a2f], [0.18, 0x222222]].forEach(([x, c]) => {
+    const borne = cilindro(0.04, 0.04, 0.07, mat(c, { metalness: 0.5 }), 12);
+    borne.position.set(x, 0.535, 0);
+    bateria.add(borne);
+  });
+  bateria.position.set(0.72, e, 0.24);
+  // Fuente
+  const fuente = new THREE.Group();
+  const pcbF = caja(0.6, 0.04, 0.32, mat(0x1f7a3f, { roughness: 0.5 }), 0.01);
+  pcbF.position.y = 0.02;
+  fuente.add(pcbF);
+  const trafo = caja(0.2, 0.16, 0.18, mat(0x2a5bd7), 0.02);
+  trafo.position.set(-0.13, 0.12, 0);
+  fuente.add(trafo);
+  const capacitor = cilindro(0.05, 0.05, 0.16, mat(0x202226), 16);
+  capacitor.position.set(0.13, 0.12, 0.05);
+  fuente.add(capacitor);
+  const bornera = caja(0.12, 0.08, 0.1, mat(0x2c8f4a), 0.01);
+  bornera.position.set(0.22, 0.08, -0.08);
+  fuente.add(bornera);
+  fuente.position.set(0.72, e + 0.025, -0.3);
+  const internos = [bateria, fuente];
+  internos.forEach(o => { o.scale.setScalar(0.0001); g.add(o); });
+  g.userData.tapa = tapa;
+  g.userData.internos = internos;
+  return g;
+}
+

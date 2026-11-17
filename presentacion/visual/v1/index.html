@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AlertAR · Presentación</title>
+<style>
+  :root { --ambar: #ffb52e; --texto: #e9edf2; --suave: #9aa5b1; --panel: rgba(16, 20, 26, .82); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #0b0e12; color: var(--texto);
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; overflow: hidden; }
+  canvas { display: block; }
+  #titulo { position: fixed; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; }
+  #titulo h1 { font-size: 64px; margin: 0; letter-spacing: .5px; }
+  #titulo p { font-size: 24px; color: var(--suave); margin: 12px 0 0; }
+  .tarjeta { position: fixed; right: 48px; top: 50%; width: 400px; transform: translateY(-50%);
+    background: var(--panel); border: 1px solid rgba(255,255,255,.08); border-radius: 14px;
+    padding: 26px 28px; opacity: 0; pointer-events: none; backdrop-filter: blur(6px); }
+  .tarjeta h2 { margin: 0 0 6px; font-size: 26px; }
+  .tarjeta .sub { color: var(--suave); font-size: 16px; margin: 0 0 16px; }
+  .tarjeta ul { margin: 0 0 18px; padding-left: 20px; font-size: 18px; line-height: 1.55; }
+  .tarjeta .precio { font-size: 34px; font-weight: 700; color: var(--ambar); }
+  .tarjeta .precio small { font-size: 16px; color: var(--suave); font-weight: 400; }
+  .tarjeta table { width: 100%; font-size: 18px; border-collapse: collapse; margin-bottom: 14px; }
+  .tarjeta td { padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.07); }
+  .tarjeta td:last-child { text-align: right; color: var(--ambar); font-weight: 600; }
+  #total { position: fixed; left: 48px; bottom: 40px; background: var(--panel); border-radius: 12px;
+    padding: 14px 22px; border: 1px solid rgba(255,255,255,.08); opacity: 0; }
+  #total .etq { font-size: 14px; color: var(--suave); text-transform: uppercase; letter-spacing: 1px; }
+  #total .num { font-size: 40px; font-weight: 700; color: var(--ambar); font-variant-numeric: tabular-nums; }
+  #seccion { position: fixed; left: 48px; top: 36px; font-size: 18px; color: var(--suave); letter-spacing: 1px;
+    text-transform: uppercase; opacity: 0; }
+  #puntos { position: fixed; right: 48px; bottom: 40px; display: flex; gap: 8px; }
+  #puntos i { width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,.18); }
+  #puntos i.on { background: var(--ambar); }
+  #ayuda { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); font-size: 13px; color: #5f6b77; }
+</style>
+</head>
+<body>
+<div id="titulo">
+  <h1>Hardware</h1>
+  <p>Cómo se arma un equipo AlertAR</p>
+</div>
+<div id="seccion">Hardware · AlertAR</div>
+
+<section class="tarjeta" id="t-esp32">
+  <h2>ESP32</h2>
+  <p class="sub">El cerebro: decide en el lugar</p>
+  <ul><li>Doble núcleo hasta 240 MHz</li><li>Wi-Fi incorporado</li><li>Cierra el paso sin depender de internet</li></ul>
+  <div class="precio">$15.000</div>
+</section>
+<section class="tarjeta" id="t-ultra">
+  <h2>2 sensores ultrasónicos</h2>
+  <p class="sub">JSN-SR04T, impermeables</p>
+  <ul><li>Uno por carril, en el techo</li><li>Miden la altura de lo que hay abajo</li><li>Distinguen un auto que pasa de un camión atascado</li></ul>
+  <div class="precio">$60.000 <small>(2 × $30.000)</small></div>
+</section>
+<section class="tarjeta" id="t-agua">
+  <h2>Sensor de agua</h2>
+  <p class="sub">Flotante de acero inoxidable</p>
+  <ul><li>Va en la pared, a la altura de peligro</li><li>Confirma que lo que se mide es agua</li></ul>
+  <div class="precio">$14.000</div>
+</section>
+<section class="tarjeta" id="t-caja">
+  <h2>Gabinete estanco</h2>
+  <p class="sub">Todo queda protegido del agua</p>
+  <ul><li>ESP32, fuentes y batería de respaldo</li><li>Si se corta la luz, sigue funcionando</li></ul>
+</section>
+<section class="tarjeta" id="t-tunel">
+  <h2>En el túnel</h2>
+  <p class="sub">Así queda instalado</p>
+  <ul><li>Ultrasónicos en el techo, uno por carril</li><li>Sensor de agua en la pared</li><li>Gabinete en la entrada</li></ul>
+</section>
+<section class="tarjeta" id="t-aviso">
+  <h2>Semáforo y cartel</h2>
+  <p class="sub">El aviso al conductor, antes de entrar</p>
+  <table>
+    <tr><td>Semáforo LED de 300 mm</td><td>$400.000</td></tr>
+    <tr><td>Cartel LED ámbar 5,76 × 2,88 m<br><small style="color:#9aa5b1">324 módulos P10</small></td><td>$9.000.000</td></tr>
+  </table>
+</section>
+<section class="tarjeta" id="t-instal">
+  <h2>Instalación</h2>
+  <p class="sub">Para dejarlo funcionando</p>
+  <table>
+    <tr><td>Hidrogrúa, 1 jornada</td><td>$1.200.000</td></tr>
+    <tr><td>Mano de obra, 3 días</td><td>$1.280.000</td></tr>
+    <tr><td>Instalación eléctrica</td><td>$700.000</td></tr>
+  </table>
+  <ul><li>Energía: 8,8 kWh por día, unos $110.000 por mes</li></ul>
+</section>
+<section class="tarjeta" id="t-lluvia">
+  <h2>Empieza a llover</h2>
+  <p class="sub">El sensor detecta agua</p>
+  <ul><li>Semáforo en amarillo</li><li>Cartel: PRECAUCION / VERIFICANDO AGUA</li><li>Espera 20 s para confirmar</li></ul>
+</section>
+<section class="tarjeta" id="t-cerrado">
+  <h2>Paso cerrado</h2>
+  <p class="sub">Agua confirmada</p>
+  <ul><li>Semáforo en rojo</li><li>Cartel: PASO CERRADO / AGUA CRITICA</li><li>El aviso llega al panel del centro de monitoreo</li></ul>
+</section>
+
+<div id="total"><div class="etq">Costo por paso</div><div class="num" id="total-num">$0</div></div>
+<div id="puntos"></div>
+<div id="ayuda">→ siguiente · ← anterior · F pantalla completa</div>
+<script src="app.js"></script>
+</body>
+</html>

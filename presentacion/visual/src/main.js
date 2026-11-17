@@ -303,3 +303,53 @@ function crearGabinete() {
   return g;
 }
 
+// Camión: el frente mira hacia -z y apoya en y = 0.
+function crearCamion(colorCabina) {
+  const g = new THREE.Group();
+  const chasis = caja(2.2, 0.3, 8.6, mat(0x2a2d31), 0.05);
+  chasis.position.y = 0.75;
+  g.add(chasis);
+  const paragolpes = caja(2.44, 0.32, 0.22, mat(0x202328, { roughness: 0.5, metalness: 0.4 }), 0.06);
+  paragolpes.position.set(0, 0.88, -4.28);
+  g.add(paragolpes);
+  const cabina = caja(2.4, 2.3, 2.1, mat(colorCabina, { roughness: 0.35, metalness: 0.35 }), 0.15);
+  cabina.position.set(0, 2.0, -3.25);
+  g.add(cabina);
+  const parrilla = caja(1.5, 0.55, 0.05, mat(0x16181c, { roughness: 0.6, metalness: 0.5 }), 0.03);
+  parrilla.position.set(0, 1.55, -4.31);
+  g.add(parrilla);
+  const vidrio = caja(2.1, 0.85, 0.05, mat(0x1d2a38, { roughness: 0.08, metalness: 0.75 }), 0.02);
+  vidrio.position.set(0, 2.55, -4.31);
+  g.add(vidrio);
+  for (const x of [-1.28, 1.28]) {
+    const espejo = caja(0.12, 0.48, 0.22, mat(0x181a1e, { roughness: 0.4 }), 0.03);
+    espejo.position.set(x, 2.45, -3.95);
+    g.add(espejo);
+  }
+  const carga = caja(2.5, 2.5, 6.2, mat(0xe3e6ea, { roughness: 0.55, metalness: 0.15 }), 0.08);
+  carga.position.set(0, 2.15, 1.1);
+  g.add(carga);
+  const matLlanta = mat(0xb8bfc7, { metalness: 0.75, roughness: 0.3 });
+  for (const z of [-3.2, 1.6, 3.2]) for (const x of [-1.05, 1.05]) {
+    const rueda = cilindro(0.48, 0.48, 0.35, mat(0x111214, { roughness: 0.9 }), 20);
+    rueda.rotation.z = Math.PI / 2;
+    rueda.position.set(x, 0.48, z);
+    g.add(rueda);
+    const llanta = cilindro(0.25, 0.25, 0.37, matLlanta, 16);
+    llanta.rotation.z = Math.PI / 2;
+    llanta.position.set(x, 0.48, z);
+    g.add(llanta);
+  }
+  for (const x of [-0.8, 0.8]) {
+    const faro = caja(0.35, 0.18, 0.05, mat(0xffffff, { emissive: 0xfff3d0, emissiveIntensity: 1.4 }), 0.02);
+    faro.position.set(x, 1.25, -4.32);
+    g.add(faro);
+  }
+  for (const x of [-1.0, 1.0]) {
+    const trasera = caja(0.25, 0.15, 0.04, mat(0x400000, { emissive: 0xff2020, emissiveIntensity: 1.1 }), 0.02);
+    trasera.position.set(x, 1.0, 4.22);
+    g.add(trasera);
+  }
+  return g;
+}
+

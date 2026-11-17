@@ -152,3 +152,65 @@ function crearESP32() {
   return g;
 }
 
+// JSN-SR04T: sonda impermeable negra con cable, y su placa con cristal y 4 pines.
+function crearUltrasonico({ conPlaca = true } = {}) {
+  const g = new THREE.Group();
+  const negro = mat(0x15171b, { roughness: 0.75 });
+  const sonda = cilindro(0.26, 0.26, 0.42, negro);
+  sonda.rotation.x = Math.PI / 2;
+  g.add(sonda);
+  const borde = new THREE.Mesh(new THREE.TorusGeometry(0.26, 0.03, 12, 40), negro);
+  borde.position.z = 0.21;
+  g.add(borde);
+  const membrana = cilindro(0.22, 0.22, 0.02, mat(0x2e333b, { roughness: 0.35 }));
+  membrana.rotation.x = Math.PI / 2;
+  membrana.position.z = 0.215;
+  g.add(membrana);
+  const rosca = cilindro(0.16, 0.16, 0.22, negro);
+  rosca.rotation.x = Math.PI / 2;
+  rosca.position.z = -0.3;
+  g.add(rosca);
+  if (conPlaca) {
+    const cable = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([
+      new THREE.Vector3(0, 0, -0.42), new THREE.Vector3(0, -0.2, -0.8), new THREE.Vector3(0.2, -0.75, -0.6),
+      new THREE.Vector3(0.3, -0.95, -0.2)]), 30, 0.03, 8), negro);
+    g.add(cable);
+    const mm = new THREE.Group();
+    const placa = caja(41, 1.6, 28, mat(0x1f7a3f, { roughness: 0.5 }), 0.6);
+    placa.position.y = 0.8;
+    mm.add(placa);
+    const cristal = kicad(wrlCristal);
+    cristal.position.set(-6, 1.6, 4);
+    mm.add(cristal);
+    const pines = kicad(wrlPines4);
+    if (tam(pines).z > tam(pines).x) pines.rotation.y = Math.PI / 2;
+    pines.position.set(4, 1.6, -11);
+    mm.add(pines);
+    const chip = caja(9, 1.8, 6, mat(0x111111), 0.3);
+    chip.position.set(10, 2.4, 5);
+    mm.add(chip);
+    mm.scale.setScalar(0.025);
+    mm.position.set(0.25, -1.05, 0);
+    g.add(mm);
+  }
+  return g;
+}
+
+function crearSensorAgua() {
+  const g = new THREE.Group();
+  const acero = mat(0xd5d9de, { metalness: 0.9, roughness: 0.25 });
+  g.add(cilindro(0.045, 0.045, 1.1, acero));
+  const flotador = cilindro(0.17, 0.17, 0.26, acero);
+  flotador.position.y = -0.18;
+  g.add(flotador);
+  for (const y of [0.5, 0.36]) {
+    const tuerca = cilindro(0.11, 0.11, 0.07, acero, 6);
+    tuerca.position.y = y;
+    g.add(tuerca);
+  }
+  const cable = cilindro(0.025, 0.025, 0.5, mat(0x222222));
+  cable.position.y = 0.8;
+  g.add(cable);
+  return g;
+}
+

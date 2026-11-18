@@ -563,3 +563,68 @@ for (const [w, d, x, z] of [[60, 140, -ANCHO / 2 - 30.4, 0], [60, 140, ANCHO / 2
   paso.add(s);
 }
 
+// Gabinete instalado: en la pared izquierda, dentro del túnel, a media altura y por encima del agua
+const Y_GAB = -2.9, Z_GAB = 3, ESC_GAB = 0.6;
+const TOPE_GAB = Y_GAB + (GAB.W * ESC_GAB) / 2, PIE_GAB = Y_GAB - (GAB.W * ESC_GAB) / 2;
+
+// Sensores ya instalados en el túnel
+const instalados = new THREE.Group();
+const conos = [];
+const ALTO_CONO = -1.8 - FONDO;
+for (const x of [-2, 2]) {
+  const s = crearUltrasonico({ conPlaca: false });
+  s.rotation.x = Math.PI / 2; // la sonda mira hacia abajo
+  s.position.set(x, -1.6, 0);
+  s.userData.escala = 0.7;
+  instalados.add(s);
+  const geoCono = new THREE.ConeGeometry(0.9, ALTO_CONO, 32, 1, true);
+  geoCono.translate(0, -ALTO_CONO / 2, 0); // vértice en la sonda: al escalar se apoya sobre agua o camiones
+  const matCono = new THREE.MeshBasicMaterial({ color: 0x5fb8ff, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false });
+  const cono = new THREE.Mesh(geoCono, matCono);
+  cono.position.set(x, -1.8, 0);
+  const anillo = new THREE.Mesh(new THREE.RingGeometry(0.76, 0.9, 32), matCono);
+  anillo.rotation.x = -Math.PI / 2;
+  anillo.position.y = -ALTO_CONO + 0.02;
+  cono.add(anillo);
+  instalados.add(cono);
+  conos.push(cono);
+}
+const aguaInstalado = crearSensorAgua();
+aguaInstalado.position.set(-ANCHO / 2 + 0.25, FONDO + 0.7, Z_GAB);
+aguaInstalado.userData.escala = 0.8;
+instalados.add(aguaInstalado);
+const sensoresInstalados = instalados.children.filter(o => !conos.includes(o));
+sensoresInstalados.forEach(o => o.scale.setScalar(0.0001));
+scene.add(instalados);
+
+// Caños por donde van los cables de los tres sensores hasta el gabinete
+const matCano = mat(0x9ea5ad, { roughness: 0.45, metalness: 0.55, transparent: true, opacity: 0 });
+function cano(puntos) {
+  const g = new THREE.Group();
+  for (let i = 0; i < puntos.length - 1; i++) {
+    const a = new THREE.Vector3(...puntos[i]), b = new THREE.Vector3(...puntos[i + 1]);
+    const tramo = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, a.distanceTo(b), 12), matCano);
+    tramo.position.copy(a).add(b).multiplyScalar(0.5);
+    tramo.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+    g.add(tramo);
+    if (i > 0) {
+      const codo = new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 8), matCano);
+      codo.position.copy(a);
+      g.add(codo);
+    }
+  }
+  const prensa = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.1, 6), matCano);
+  prensa.position.set(...puntos[puntos.length - 1]);
+  g.add(prensa);
+  return g;
+}
+const XP = -ANCHO / 2 + 0.12, YT = -1.42; // caños pegados a la pared y al techo
+const canos = new THREE.Group();
+canos.add(
+  cano([[-2, YT, 0], [-2, YT, Z_GAB - 0.15], [XP, YT, Z_GAB - 0.15], [XP, TOPE_GAB, Z_GAB - 0.15]]),
+  cano([[2, YT, 0], [2, YT, Z_GAB + 0.15], [XP, YT, Z_GAB + 0.15], [XP, TOPE_GAB, Z_GAB + 0.15]]),
+  cano([[-ANCHO / 2 + 0.2, FONDO + 1.45, Z_GAB], [-ANCHO / 2 + 0.2, PIE_GAB, Z_GAB]]),
+);
+canos.visible = false;
+scene.add(canos);
+

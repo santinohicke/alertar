@@ -993,3 +993,98 @@ tl.to(luces.amarillo, { emissiveIntensity: 0.06, duration: 0.3 }, ">0.6");
 tl.to(luces.rojo, { emissiveIntensity: 1.6, duration: 0.3 }, "<");
 tl.to(caras[3], { opacity: 0, duration: 0.3 }, "<");
 tl.to(caras[4], { opacity: 1, duration: 0.3 }, "<");
+// Diapositivas 2D después del hardware: lógica, datos, tecnología y negocio
+diapos.cierre(() => {
+  tl.to([renderer.domElement, "#seccion", "#mini", "#t-camiones"], { opacity: 0, duration: 0.6 }, "<");
+});
+tl.addLabel("fin", tl.duration());
+
+// ---------- Navegación ----------
+let actual = 0;
+const barraProgreso = $("#progreso i");
+const pintarPuntos = () => { barraProgreso.style.width = (100 * actual / (etapas.length - 1)) + "%"; };
+const actualizarEscena = () => {
+  const yAgua = aguaTunel.visible && aguaTunel.material.opacity > 0.02 ? FONDO + 0.01 + aguaTunel.scale.y : FONDO;
+  [camion2, camion1].forEach((c, i) => {
+    let yObj = yAgua;
+    if (c.visible) {
+      const dz = -c.position.z;
+      if (dz >= -4.35 && dz <= 4.25) yObj = Math.max(yObj, c.position.y + (dz < -2.05 ? 3.15 : 3.4));
+    }
+    conos[i].scale.setScalar(THREE.MathUtils.clamp((-1.8 - yObj) / ALTO_CONO, 0.08, 1));
+  });
+  halos.forEach(([hm, m]) => { hm.opacity = Math.max(0, (m.emissiveIntensity - 0.1) / 1.4) * 0.72; });
+  miniLuces.forEach(([el, m]) => { el.style.opacity = 0.18 + 0.82 * Math.min(1, m.emissiveIntensity / 1.4); });
+};
+const sincronizar = () => {
+  pintarTotal();
+  opacos();
+  paso.children.forEach(c => { if (c.userData.luzTunel) c.intensity = luzTunel.v; });
+  ubicar(camion1);
+  ubicar(camion2);
+  actualizarEscena();
+  encuadre();
+  camera.lookAt(objetivo);
+  renderer.render(scene, camera);
+};
+pintarPuntos();
+let tween = null;
+function ir(i, instantaneo = i < actual) {
+  if (i < 0 || i >= etapas.length) return;
+  actual = i;
+  pintarPuntos();
+  if (tween) { tween.kill(); tween = null; }
+  // La etapa i se ve completa cuando la línea llega al comienzo de la etapa siguiente.
+  const destino = i === 0 ? "inicio" : (etapas[i + 1] || "fin");
+  if (instantaneo) {
+    tl.seek(destino, false);
+    sincronizar();
+  } else {
+    const ini = tl.labels[etapas[i]] ?? 0;
+    if (tl.time() < ini) { tl.seek(ini, false); sincronizar(); }
+    tween = tl.tweenTo(destino, { ease: "none" });
+  }
+}
+addEventListener("keydown", e => {
+  if (["ArrowRight", "PageDown", " ", "Enter"].includes(e.key)) { e.preventDefault(); ir(actual + 1, e.shiftKey); }
+  else if (["ArrowLeft", "PageUp", "Backspace"].includes(e.key)) { e.preventDefault(); ir(actual - 1, true); }
+  else if (e.key === "f" || e.key === "F") {
+    if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen();
+  }
+});
+addEventListener("click", e => {
+  if (e.target.closest("a")) return;
+  ir(actual + 1, e.shiftKey);
+});
+// Para probar desde la consola: __alertar.tl.seek("cerrado")
+window.__alertar = {
+  tl, etapas, ir,
+  // Muestra la etapa terminada y dibuja un cuadro (sirve aunque la pestaña esté en segundo plano).
+  // avance (0 a 1) permite ver un momento intermedio de la etapa
+  ver(nombre, avance = 1) {
+    const i = etapas.indexOf(nombre);
+    const ini = tl.labels[nombre] ?? 0, fin = i <= 0 ? 0 : tl.labels[etapas[i + 1] || "fin"];
+    tl.seek(ini + (fin - ini) * avance, false);
+    actual = Math.max(i, 0); pintarPuntos();
+    sincronizar();
+  },
+};
+
+// Para capturas: index.html?etapa=tunel abre directamente esa etapa terminada.
+const etapaURL = new URLSearchParams(location.search).get("etapa");
+if (etapaURL) window.__alertar.ver(etapaURL, Number(new URLSearchParams(location.search).get("avance") ?? 1));
+
+// ---------- Bucle ----------
+const reloj = new THREE.Clock();
+function bucle() {
+  const t = reloj.getElapsedTime();
+  // Las piezas se balancean suave; con giro.v = 0 quedan derechas
+  escenario.forEach((o, i) => { o.rotation.y = giro.v * 0.5 * Math.sin(t * 0.7 + i * 1.3); });
+  if (aguaTunel.visible) texAgua.offset.set(t * 0.025, t * 0.04);
+  actualizarEscena();
+  if (renderer.domElement.style.opacity !== "0") renderer.render(scene, camera); // sin 3D en pantalla no dibuja
+  requestAnimationFrame(bucle);
+}
+bucle();
+
+addEventListener("resize", encuadre);

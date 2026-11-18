@@ -38,3 +38,16 @@ canvas { display: block; }
 #d-portada .equipo { font-size: 26px; }
 #d-portada .materia { font-size: 22px; color: var(--text-3); margin-top: 12px; letter-spacing: 2px; }
 
+/* Noticias: una por diapositiva, texto a la izquierda y foto a la derecha */
+.noticia-txt { position: absolute; left: 96px; top: 200px; width: 600px; }
+.noticia-txt .fecha { font-size: 28px; color: var(--crit); font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
+.noticia-txt .lugar { font-size: 72px; font-weight: 800; line-height: 1.05; margin: 12px 0 26px; letter-spacing: -1px; }
+.noticia-txt .hecho { font-size: 38px; line-height: 1.3; }
+.noticia-txt .fuente { font-size: 22px; color: var(--text-3); margin-top: 30px; }
+.noticia-foto { position: absolute; right: 96px; top: 150px; width: 760px; height: 600px; border-radius: 10px;
+  overflow: hidden; border: 1px solid var(--border-strong); }
+.noticia-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.noticia-link { position: absolute; right: 96px; top: 766px; width: 760px; font-size: 21px; color: var(--celeste);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: none; pointer-events: auto; }
+.noticia-link:hover { text-decoration: underline; }
+

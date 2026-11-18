@@ -831,3 +831,165 @@ const camara = (p, o, dur = 2.4) => {
 };
 gsap.set(".tarjeta", { x: 40 });
 
+// Diapositivas 2D antes del hardware: problema, contexto, cómo se resuelve hoy y la solución
+const diapos = crearDiapos(tl, etapa);
+diapos.intro();
+
+// Entra el 3D
+etapa("hardware");
+diapos.salir();
+tl.to("#titulo", { opacity: 1, duration: 0.6 }, "<0.3"); // el título va solo, sin el escenario 3D detrás
+
+// 1. ESP32
+etapa("esp32");
+tl.to("#titulo", { opacity: 0, duration: 0.5 }, "<");
+tl.to(renderer.domElement, { opacity: 1, duration: 0.8 }, "<0.2");
+tl.to(["#seccion", "#total"], { opacity: 1, duration: 0.5 }, "<");
+aparecer(esp32);
+tarjeta("#t-esp32");
+sumar(15000);
+
+// 2. Ultrasónicos
+etapa("ultra");
+tarjeta("#t-esp32", false);
+aparecer(ultra1); aparecer(ultra2, { delay: 0.15 });
+tarjeta("#t-ultra");
+sumar(75000);
+
+// 3. Sensor de agua
+etapa("agua");
+tarjeta("#t-ultra", false);
+aparecer(agua);
+tarjeta("#t-agua");
+sumar(89000);
+
+// 4. Gabinete: entra el ESP32 junto a la batería y la fuente (los sensores van afuera, en el túnel)
+etapa("caja");
+tarjeta("#t-agua", false);
+tl.to(giro, { v: 0, duration: 0.6 }, "<");
+camara([0, 6.6, 50.2], [0, 0.2, 46], 1.6);
+[ultra1, ultra2, agua].forEach((o, i) => {
+  tl.to(o.position, { x: [-5, 5, 0][i], z: Z_ESC - 3.5, duration: 0.9 }, "<");
+  tl.to(o.scale, { x: 0.0001, y: 0.0001, z: 0.0001, duration: 0.9, ease: "power2.in" }, "<");
+});
+tl.to(esp32.position, { y: 2.6, z: Z_ESC + 0.4, duration: 0.8 }, "<");
+aparecer(gabinete, { delay: 0.3 });
+tarjeta("#t-caja");
+sumar(229000);
+gabinete.userData.internos.forEach((o, i) =>
+  tl.to(o.scale, { x: 1, y: 1, z: 1, ease: "back.out(1.6)", duration: 0.6, delay: 0.5 + 0.15 * i }, "<"));
+tl.to(esp32.position, { x: -0.42, y: 0.25 + GAB.e + 0.3, z: Z_ESC, duration: 1.0 }, ">0.1");
+tl.to(esp32.scale, { x: 0.55, y: 0.55, z: 0.55, duration: 1.0 }, "<");
+tl.to(gabinete.userData.tapa.rotation, { x: 0, duration: 0.8, ease: "power2.in" }, ">0.3");
+// tl.to devuelve la línea de tiempo; el tween recién agregado se obtiene con recent().
+const tCierre = tl.recent().startTime() + 0.75;
+tl.to(esp32.scale, { x: 0.0001, y: 0.0001, z: 0.0001, duration: 0.01 }, tCierre);
+
+// 5. Se aleja la cámara: aparece el paso bajo nivel y cada cosa va a su lugar
+etapa("tunel");
+tarjeta("#t-caja", false);
+tl.set(paso, { visible: true }, "<");
+// Ya visibles del todo, el paso deja de ser transparente para que se ordene bien con los conos y el agua
+const opacos = () => matsPaso.forEach(m => {
+  const t = m.opacity < 0.999;
+  if (m.transparent !== t) { m.transparent = t; m.needsUpdate = true; }
+});
+tl.to(matsPaso, { opacity: 1, duration: 1.4, onUpdate: opacos }, "<");
+tl.to(pedestal.scale, { x: 0.0001, y: 0.0001, z: 0.0001, duration: 0.8 }, "<");
+tl.to(foco, { intensity: 0, duration: 0.8 }, "<");
+tl.to(luzTunel, { v: 3, duration: 1.4, onUpdate: () => paso.children.forEach(c => { if (c.userData.luzTunel) c.intensity = luzTunel.v; }) }, "<");
+tl.to(cielo, { intensity: 2.2, duration: 1.4 }, "<");
+camara([22, 12, 50], [1, -2.5, 6], 2.6);
+tl.to(gabinete.position, { x: -ANCHO / 2 + 0.02, y: Y_GAB, z: Z_GAB, duration: 1.8 }, "<0.4");
+tl.to(gabinete.rotation, { z: -Math.PI / 2, duration: 1.8 }, "<"); // la tapa queda de frente, como puerta
+tl.to(gabinete.scale, { x: ESC_GAB, y: ESC_GAB, z: ESC_GAB, duration: 1.8 }, "<");
+sensoresInstalados.forEach((o, i) => {
+  const e = o.userData.escala;
+  tl.to(o.scale, { x: e, y: e, z: e, ease: "back.out(1.6)", duration: 0.8, delay: 0.25 * i }, "<0.3");
+});
+tarjeta("#t-tunel");
+// Se acerca a la boca del túnel para ver los sensores del techo y el de agua
+tl.to(camera.position, { x: 3.0, y: -1.7, z: 19, duration: 2.2, onUpdate: () => camera.lookAt(objetivo) }, ">0.2");
+tl.to(objetivo, { x: -0.4, y: -3.0, z: 0, duration: 2.2 }, "<");
+tl.to(conos.map(c => c.material), { opacity: 0.18, duration: 0.8 }, ">-0.4");
+tl.set(canos, { visible: true }, "<");
+tl.to(matCano, { opacity: 1, duration: 0.8 }, "<");
+
+// 6. Semáforo antes de la bajada y cartel sobre la boca del túnel
+etapa("aviso");
+tarjeta("#t-tunel", false);
+camara([13, 3.8, 43], [0.5, -1.2, 17]);
+aparecer(semaforo, { delay: 0.6 });
+tl.to(luces.verde, { emissiveIntensity: 1.5, duration: 0.5 }, ">-0.2");
+aparecer(cartel, { delay: 0.1 });
+tarjeta("#t-aviso");
+sumar(9629000);
+
+// 7. Instalación y energía
+etapa("instal");
+tarjeta("#t-aviso", false);
+tarjeta("#t-instal");
+sumar(12809000);
+
+const VISTA_PASO = [[-2.6, 1.8, 31], [0.8, -2.9, 4]];
+
+// 8. Empieza a llover: el agua se junta en la parte baja
+etapa("lluvia");
+tarjeta("#t-instal", false);
+tl.to("#total", { opacity: 0, duration: 0.5 }, "<");
+tl.to("#mini", { opacity: 1, duration: 0.5 }, "<");
+camara(VISTA_PASO[0], VISTA_PASO[1]);
+tl.set(aguaTunel, { visible: true }, "<0.5");
+tl.to(aguaTunel.material, { opacity: 0.78, duration: 0.6 }, "<");
+tl.to(aguaTunel.scale, { y: 0.9, duration: 2.0 }, "<");
+tl.to(luces.verde, { emissiveIntensity: 0.06, duration: 0.3 }, "<0.8");
+tl.to(luces.amarillo, { emissiveIntensity: 1.5, duration: 0.3 }, "<");
+tl.to(caras[0], { opacity: 0, duration: 0.3 }, "<");
+tl.to(caras[1], { opacity: 1, duration: 0.3 }, "<");
+tarjeta("#t-lluvia");
+
+// 9. Agua confirmada: paso cerrado
+etapa("cerrado");
+tarjeta("#t-lluvia", false);
+tl.to(aguaTunel.scale, { y: 1.9, duration: 2.4 }, "<");
+tl.to(luces.amarillo, { emissiveIntensity: 0.06, duration: 0.3 }, "<1.0");
+tl.to(luces.rojo, { emissiveIntensity: 1.6, duration: 0.3 }, "<");
+tl.to(caras[1], { opacity: 0, duration: 0.3 }, "<");
+tl.to(caras[2], { opacity: 1, duration: 0.3 }, "<");
+tarjeta("#t-cerrado");
+
+// 10. Baja el agua. Un camión se queda quieto en un carril: carril bloqueado
+const naranja = { r: 1, g: 0.55, b: 0.15 };
+etapa("camion");
+tarjeta("#t-cerrado", false);
+tl.to(aguaTunel.scale, { y: 0.0001, duration: 1.2 }, "<");
+tl.to(aguaTunel.material, { opacity: 0, duration: 1.2 }, "<");
+tl.set(aguaTunel, { visible: false }, ">");
+tl.to(luces.rojo, { emissiveIntensity: 0.06, duration: 0.3 }, "<");
+tl.to(luces.verde, { emissiveIntensity: 1.5, duration: 0.3 }, "<");
+tl.to(caras[2], { opacity: 0, duration: 0.3 }, "<");
+tl.to(caras[0], { opacity: 1, duration: 0.3 }, "<");
+tarjeta("#t-camion");
+// Cámara más alta: los camiones pasan por debajo y se ven los dos carriles y el cartel
+camara([-0.5, 6.4, 36], [0.2, -2.6, 4], 2.0);
+tl.set(camion1, { visible: true }, "<");
+tl.to(camion1.position, { z: 0, duration: 3.4, ease: "power2.out", onUpdate: () => ubicar(camion1) }, "<0.6");
+tl.to(conos[1].material.color, { ...naranja, duration: 0.4 }, ">-0.4");
+tl.to(conos[1].material, { opacity: 0.3, duration: 0.4 }, "<");
+tl.to(luces.verde, { emissiveIntensity: 0.06, duration: 0.3 }, ">0.6");
+tl.to(luces.amarillo, { emissiveIntensity: 1.5, duration: 0.3 }, "<");
+tl.to(caras[0], { opacity: 0, duration: 0.3 }, "<");
+tl.to(caras[3], { opacity: 1, duration: 0.3 }, "<");
+
+// 11. Llega otro camión por el otro carril: los dos bloqueados, paso cerrado
+etapa("camiones");
+tarjeta("#t-camion", false);
+tarjeta("#t-camiones");
+tl.set(camion2, { visible: true }, "<0.05");
+tl.to(camion2.position, { z: 0, duration: 3.4, ease: "power2.out", onUpdate: () => ubicar(camion2) }, "<0.2");
+tl.to(conos[0].material.color, { ...naranja, duration: 0.4 }, ">-0.4");
+tl.to(conos[0].material, { opacity: 0.3, duration: 0.4 }, "<");
+tl.to(luces.amarillo, { emissiveIntensity: 0.06, duration: 0.3 }, ">0.6");
+tl.to(luces.rojo, { emissiveIntensity: 1.6, duration: 0.3 }, "<");
+tl.to(caras[3], { opacity: 0, duration: 0.3 }, "<");
+tl.to(caras[4], { opacity: 1, duration: 0.3 }, "<");

@@ -353,3 +353,120 @@ function crearCamion(colorCabina) {
   return g;
 }
 
+// ---------- Paso bajo nivel ----------
+// La calle baja por una rampa, pasa por debajo de las vías y vuelve a subir.
+// El agua se junta en la parte más baja; el semáforo está arriba, antes de la bajada.
+const ANCHO = 9, FONDO = -5.6;
+const Z_RAMPA = 26, Z_BAJO = 8; // la rampa baja entre z = 26 y z = 8, y sube igual del otro lado
+const cota = z => {
+  const a = Math.abs(z);
+  if (a >= Z_RAMPA) return 0;
+  if (a <= Z_BAJO) return FONDO;
+  return FONDO * (Z_RAMPA - a) / (Z_RAMPA - Z_BAJO);
+};
+const paso = new THREE.Group();
+const matHormigon = mat(0x8a9097, { roughness: 0.92, transparent: true });
+const matAsfalto = mat(0x26292e, { roughness: 0.95, transparent: true });
+const matLinea = new THREE.MeshBasicMaterial({ color: 0xeeeeee, transparent: true, side: THREE.DoubleSide,
+  polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+const matLineaAmarilla = new THREE.MeshBasicMaterial({ color: 0xe5b528, transparent: true,
+  polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+const matLuz = new THREE.MeshBasicMaterial({ color: 0xfff1c9, transparent: true });
+const matsPaso = [matHormigon, matAsfalto, matLinea, matLineaAmarilla, matLuz];
+
+function tira(ancho, largo, segs, alto) { // plano a lo largo de z que sigue la cota
+  const geo = new THREE.PlaneGeometry(ancho, largo, 1, segs);
+  geo.rotateX(-Math.PI / 2);
+  const p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) p.setY(i, cota(p.getZ(i)) + alto);
+  geo.computeVertexNormals();
+  return geo;
+}
+const calle = new THREE.Mesh(tira(ANCHO, 2 * Z_RAMPA + 30, 164, 0), matAsfalto);
+calle.receiveShadow = true;
+paso.add(calle);
+for (const x of [-ANCHO / 2 + 0.36, ANCHO / 2 - 0.36]) { // líneas continuas amarillas de borde
+  const borde = new THREE.Mesh(tira(0.14, 2 * Z_RAMPA + 30, 164, 0.02), matLineaAmarilla);
+  borde.position.x = x;
+  paso.add(borde);
+}
+for (let z = -Z_RAMPA - 12; z < Z_RAMPA + 14; z += 3) { // líneas punteadas pegadas a la calle
+  const geo = new THREE.PlaneGeometry(0.16, 1.4, 1, 7);
+  geo.rotateX(-Math.PI / 2);
+  geo.translate(0, 0, z);
+  const p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) p.setY(i, cota(p.getZ(i)) + 0.02);
+  paso.add(new THREE.Mesh(geo, matLinea));
+}
+for (const z of [16, 23]) for (const x of [-2, 2]) { // flechas de sentido en la rampa de entrada
+  const asta = new THREE.PlaneGeometry(0.24, 1.4, 1, 6);
+  asta.rotateX(-Math.PI / 2);
+  asta.translate(x, 0, z);
+  const p = asta.attributes.position;
+  for (let i = 0; i < p.count; i++) p.setY(i, cota(p.getZ(i)) + 0.022);
+  paso.add(new THREE.Mesh(asta, matLinea));
+  const punta = new THREE.BufferGeometry();
+  const zBase = z - 0.7, zPunta = z - 1.55;
+  punta.setAttribute("position", new THREE.Float32BufferAttribute([
+    x - 0.44, cota(zBase) + 0.022, zBase,
+    x + 0.44, cota(zBase) + 0.022, zBase,
+    x, cota(zPunta) + 0.022, zPunta,
+  ], 3));
+  paso.add(new THREE.Mesh(punta, matLinea));
+}
+// Rejillas transversales de desagüe pluvial en la parte baja
+const matRejilla = mat(0x181b1f, { roughness: 0.6, metalness: 0.7, transparent: true });
+matsPaso.push(matRejilla);
+for (const z of [-Z_BAJO + 0.4, Z_BAJO - 0.4]) {
+  const rej = caja(ANCHO - 0.5, 0.03, 0.42, matRejilla, 0.005);
+  rej.position.set(0, FONDO + 0.012, z);
+  paso.add(rej);
+}
+// Muros de contención a los costados de la rampa y del tramo bajo (de la calle hasta el nivel del suelo)
+function muro(x) {
+  const segs = 140, L = 2 * Z_RAMPA;
+  const pos = [], idx = [];
+  for (let i = 0; i <= segs; i++) {
+    const z = -Z_RAMPA + (L * i) / segs;
+    pos.push(x, cota(z), z, x, 0.35, z);
+    if (i < segs) { const k = i * 2; idx.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const m = new THREE.Mesh(geo, matHormigon);
+  m.material.side = THREE.DoubleSide;
+  m.receiveShadow = true;
+  return m;
+}
+paso.add(muro(-ANCHO / 2), muro(ANCHO / 2));
+// Reglas hidrométricas en ambas paredes del tramo bajo (muestran la altura del agua en metros)
+{
+  const c = document.createElement("canvas"); c.width = 128; c.height = 512;
+  const x = c.getContext("2d");
+  x.fillStyle = "#e8ecef"; x.fillRect(0, 0, 128, 512);
+  x.fillStyle = "#d93838"; x.fillRect(0, 0, 26, 512 - Math.round(512 * 0.3 / 2.2)); // rojo desde 0,30 m
+  x.fillStyle = "#1b1f24"; x.font = "bold 34px Arial, sans-serif"; x.textAlign = "right"; x.textBaseline = "middle";
+  for (let dm = 0; dm <= 22; dm++) {
+    const y = 512 - (dm / 22) * 492 - 10;
+    const largo = dm % 5 === 0 ? 48 : 26;
+    x.fillRect(26, y - 2, largo, dm % 5 === 0 ? 5 : 3);
+    if (dm > 0 && dm % 5 === 0) x.fillText((dm / 10).toFixed(1).replace(".", ",") + "m", 122, y);
+  }
+  const texRegla = new THREE.CanvasTexture(c);
+  texRegla.colorSpace = THREE.SRGBColorSpace;
+  const matRegla = new THREE.MeshStandardMaterial({ map: texRegla, roughness: 0.7, transparent: true });
+  matsPaso.push(matRegla);
+  for (const [px, ry] of [[-ANCHO / 2 + 0.02, Math.PI / 2], [ANCHO / 2 - 0.02, -Math.PI / 2]]) {
+    const r = new THREE.Mesh(new THREE.PlaneGeometry(0.44, 2.2), matRegla);
+    r.position.set(px, FONDO + 1.1, 5.8);
+    r.rotation.y = ry;
+    paso.add(r);
+  }
+}
+for (const x of [-ANCHO / 2 - 0.2, ANCHO / 2 + 0.2]) { // baranda/cordón arriba del muro
+  const c = caja(0.4, 0.3, 2 * Z_RAMPA, matHormigon, 0.05);
+  c.position.set(x, 0.5, 0);
+  paso.add(c);
+}

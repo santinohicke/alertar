@@ -628,3 +628,102 @@ canos.add(
 canos.visible = false;
 scene.add(canos);
 
+// ---------- Semáforo (arriba, antes de la bajada) y cartel (en el frente del túnel) ----------
+const semaforo = new THREE.Group();
+{
+  const basePoste = cilindro(0.22, 0.26, 0.18, mat(0x3a4048, { metalness: 0.6, roughness: 0.4 }), 16);
+  basePoste.position.y = 0.09;
+  semaforo.add(basePoste);
+  const poste = cilindro(0.1, 0.12, 4.2, mat(0x4a5058, { metalness: 0.65, roughness: 0.35 }));
+  poste.position.y = 2.1;
+  semaforo.add(poste);
+  const orla = caja(0.82, 2.02, 0.04, mat(0xdce2e8, { roughness: 0.5 }), 0.09);
+  orla.position.set(0, 4.9, -0.02);
+  semaforo.add(orla);
+  const cuerpo = caja(0.7, 1.9, 0.5, mat(0x1b1e23, { roughness: 0.5 }), 0.08);
+  cuerpo.position.y = 4.9;
+  semaforo.add(cuerpo);
+}
+const texHalo = (() => {
+  const c = document.createElement("canvas"); c.width = c.height = 64;
+  const x = c.getContext("2d"), g = x.createRadialGradient(32, 32, 2, 32, 32, 32);
+  g.addColorStop(0, "rgba(255,255,255,1)");
+  g.addColorStop(0.35, "rgba(255,255,255,0.45)");
+  g.addColorStop(1, "rgba(255,255,255,0)");
+  x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+})();
+const luces = {}, halos = [];
+[["rojo", 0xff2a1f, 5.48], ["amarillo", 0xffa000, 4.9], ["verde", 0x1fd65a, 4.32]].forEach(([n, c, y]) => {
+  const m = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, emissive: c, emissiveIntensity: 0.06, roughness: 0.25 });
+  const l = new THREE.Mesh(new THREE.CircleGeometry(0.2, 32), m);
+  l.position.set(0, y, 0.255);
+  semaforo.add(l);
+  const visera = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.22, 24, 1, true, -Math.PI * 0.38, Math.PI * 0.76),
+    mat(0x15171a, { side: THREE.DoubleSide, roughness: 0.5 }));
+  visera.rotation.x = Math.PI / 2;
+  visera.rotation.z = Math.PI / 2;
+  visera.position.set(0, y + 0.02, 0.34);
+  semaforo.add(visera);
+  const haloMat = new THREE.SpriteMaterial({ map: texHalo, color: c, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 });
+  const halo = new THREE.Sprite(haloMat);
+  halo.position.set(0, y, 0.32);
+  halo.scale.setScalar(1.45);
+  semaforo.add(halo);
+  halos.push([haloMat, m]);
+  luces[n] = m;
+});
+semaforo.position.set(ANCHO / 2 + 1.0, 0, Z_RAMPA + 1.5);
+semaforo.userData.escala = 1;
+semaforo.scale.setScalar(0.0001);
+scene.add(semaforo);
+
+function texturaCartel(l1, l2) {
+  const c = document.createElement("canvas");
+  c.width = 1024; c.height = 360;
+  const x = c.getContext("2d");
+  x.fillStyle = "#050505"; x.fillRect(0, 0, c.width, c.height);
+  x.fillStyle = "#ffb52e";
+  x.shadowColor = "#ff9500"; x.shadowBlur = 10;
+  x.font = "bold 118px Consolas, monospace";
+  x.textAlign = "center"; x.textBaseline = "middle";
+  // Achica la letra si el renglón más largo no entra en el ancho del cartel
+  const ancho = Math.max(x.measureText(l1).width, l2 ? x.measureText(l2).width : 0);
+  if (ancho > 940) x.font = `bold ${Math.floor(118 * 940 / ancho)}px Consolas, monospace`;
+  if (l2) { x.fillText(l1, 512, 110); x.fillText(l2, 512, 250); } else { x.fillText(l1, 512, 180); }
+  x.shadowBlur = 0;
+  x.fillStyle = "rgba(5,5,5,0.82)";
+  for (let i = 0; i < c.width; i += 9) x.fillRect(i, 0, 3, c.height);
+  for (let j = 0; j < c.height; j += 9) x.fillRect(0, j, c.width, 3);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
+}
+const cartel = new THREE.Group();
+cartel.add(caja(4.7, 1.6, 0.25, mat(0x15171a, { roughness: 0.45, metalness: 0.3 }), 0.04));
+{
+  const viseraCartel = caja(4.78, 0.08, 0.4, mat(0x15171a, { roughness: 0.5, metalness: 0.3 }), 0.02);
+  viseraCartel.position.set(0, 0.82, 0.06);
+  cartel.add(viseraCartel);
+  const matSoporte = mat(0x3a4048, { metalness: 0.7, roughness: 0.35 });
+  for (const x of [-1.85, 1.85]) {
+    const col = caja(0.16, 1.1, 0.18, matSoporte, 0.02);
+    col.position.set(x, -0.42, -0.14);
+    cartel.add(col);
+  }
+}
+const caras = [["PASO HABILITADO", ""], ["PRECAUCION", "POSIBLE INUNDACION"], ["PASO CERRADO", "AGUA CRITICA"],
+  ["PRECAUCION", "CARRIL BLOQUEADO"], ["PASO CERRADO", "AMBOS BLOQUEADOS"]]
+  .map(([a, b], i) => {
+    const m = new THREE.MeshBasicMaterial({ map: texturaCartel(a, b), transparent: true, opacity: i === 0 ? 1 : 0 });
+    const p = new THREE.Mesh(new THREE.PlaneGeometry(4.5, 1.45), m);
+    p.position.z = 0.13 + i * 0.002;
+    cartel.add(p);
+    return m;
+  });
+cartel.position.set(0, 0.9, Z_BAJO + 0.15); // sobre la boca del túnel, asoma por encima del nivel de la calle
+cartel.userData.escala = 1;
+cartel.scale.setScalar(0.0001);
+scene.add(cartel);
+

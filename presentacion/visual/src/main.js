@@ -727,3 +727,81 @@ cartel.userData.escala = 1;
 cartel.scale.setScalar(0.0001);
 scene.add(cartel);
 
+// ---------- Escenario de presentación de piezas ----------
+const Z_ESC = 46;
+const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.6, 0.25, 64), mat(0x1b2027, { roughness: 0.45, metalness: 0.3 }));
+pedestal.position.set(0, 0.12, Z_ESC + 0.3);
+pedestal.receiveShadow = true;
+{
+  const aro = new THREE.Mesh(new THREE.TorusGeometry(3.4, 0.022, 12, 64),
+    mat(0x4fc3f7, { emissive: 0x4fc3f7, emissiveIntensity: 0.45, roughness: 0.3 }));
+  aro.rotation.x = Math.PI / 2;
+  aro.position.y = 0.125;
+  pedestal.add(aro);
+}
+scene.add(pedestal);
+const foco = new THREE.SpotLight(0xffffff, 70, 15, 0.6, 0.5);
+foco.position.set(0, 7.5, Z_ESC + 2.5);
+foco.target.position.set(0, 0.5, Z_ESC);
+foco.castShadow = true;
+foco.shadow.mapSize.set(1024, 1024);
+foco.shadow.bias = -0.0005;
+scene.add(foco, foco.target);
+
+const esp32 = crearESP32();
+const ultra1 = crearUltrasonico(); const ultra2 = crearUltrasonico();
+const agua = crearSensorAgua();
+const gabinete = crearGabinete();
+const escenario = [esp32, ultra1, ultra2, agua];
+esp32.position.set(0, 0.7, Z_ESC + 0.9);
+esp32.userData.escalaVista = 0.8;
+ultra1.position.set(-2.3, 1.35, Z_ESC - 0.9);
+ultra2.position.set(2.3, 1.35, Z_ESC - 0.9);
+agua.position.set(0, 1.0, Z_ESC - 1.4);
+gabinete.position.set(0, 0.25, Z_ESC);
+[...escenario, gabinete].forEach(o => { o.userData.escala = 1; o.scale.setScalar(0.0001); scene.add(o); });
+
+// ---------- Lluvia y agua ----------
+// Textura periódica liviana (128 × 128) para ondular la superficie del agua sin costo en GPU integrada.
+const texAgua = (() => {
+  const n = 128, c = document.createElement("canvas");
+  c.width = c.height = n;
+  const x = c.getContext("2d"), img = x.createImageData(n, n), d = img.data, k = (Math.PI * 2) / n;
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+    const v = 128 + 55 * Math.sin(i * k * 3 + j * k) + 40 * Math.cos(j * k * 4 - i * k * 2) + 25 * Math.sin((i + j) * k * 6);
+    const p = (j * n + i) * 4;
+    d[p] = d[p + 1] = d[p + 2] = v; d[p + 3] = 255;
+  }
+  x.putImageData(img, 0, 0);
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(3, 14);
+  return t;
+})();
+// El agua es una caja con base en el fondo: donde la rampa queda por encima, la calle la tapa.
+const geoAgua = new THREE.BoxGeometry(ANCHO - 0.02, 1, 2 * Z_RAMPA - 4);
+geoAgua.translate(0, 0.5, 0);
+const aguaTunel = new THREE.Mesh(geoAgua, new THREE.MeshStandardMaterial({
+  color: 0x2b76ad, transparent: true, opacity: 0, roughness: 0.14, metalness: 0.35,
+  bumpMap: texAgua, bumpScale: 0.035 }));
+aguaTunel.position.y = FONDO + 0.01;
+aguaTunel.visible = false; // invisible mientras no hay agua: si no, pelea con la calle y aparecen rayas
+aguaTunel.scale.y = 0.0001;
+scene.add(aguaTunel);
+
+matsPaso.forEach(m => { m.opacity = 0; });
+
+const camion1 = crearCamion(0xc8452f); // carril derecho, baja hacia el túnel
+camion1.position.set(2, 0, 50);
+const camion2 = crearCamion(0x2f6fc8); // carril izquierdo, mismo sentido que el primero
+camion2.position.set(-2, 0, 58);
+// Sigue la calle: altura y pendiente según dónde está
+const ubicar = c => {
+  const z = c.position.z;
+  c.position.y = cota(z);
+  c.rotation.x = -Math.atan2(cota(z + 1) - cota(z - 1), 2);
+};
+[camion1, camion2].forEach(c => { c.visible = false; ubicar(c); scene.add(c); });
+const luzTunel = { v: 0 };
+const giro = { v: 1 };
+

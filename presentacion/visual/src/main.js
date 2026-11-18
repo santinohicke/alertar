@@ -470,3 +470,96 @@ for (const x of [-ANCHO / 2 - 0.2, ANCHO / 2 + 0.2]) { // baranda/cordón arriba
   c.position.set(x, 0.5, 0);
   paso.add(c);
 }
+// Losa del puente ferroviario: techo del túnel y frente (portal) donde va el cartel
+const losa = caja(ANCHO + 3, 2.0, 2 * Z_BAJO, matHormigon, 0.05);
+losa.position.set(0, -0.3, 0); // techo a y = -1.3
+paso.add(losa);
+// Franja cebrada de gálibo y señal de altura máxima (4,0 m) en el frente del puente
+{
+  const c = document.createElement("canvas"); c.width = 512; c.height = 64;
+  const x = c.getContext("2d");
+  x.fillStyle = "#eab01e"; x.fillRect(0, 0, 512, 64);
+  x.fillStyle = "#15171a";
+  for (let i = -64; i < 576; i += 48) {
+    x.beginPath(); x.moveTo(i, 64); x.lineTo(i + 24, 64); x.lineTo(i + 56, 0); x.lineTo(i + 32, 0); x.closePath(); x.fill();
+  }
+  const texCebra = new THREE.CanvasTexture(c);
+  texCebra.colorSpace = THREE.SRGBColorSpace;
+  const matCebra = new THREE.MeshStandardMaterial({ map: texCebra, roughness: 0.6, transparent: true });
+  matsPaso.push(matCebra);
+  for (const [pz, ry] of [[Z_BAJO + 0.02, 0], [-Z_BAJO - 0.02, Math.PI]]) {
+    const f = new THREE.Mesh(new THREE.PlaneGeometry(ANCHO + 0.4, 0.3), matCebra);
+    f.position.set(0, -1.14, pz);
+    f.rotation.y = ry;
+    paso.add(f);
+  }
+  const cs = document.createElement("canvas"); cs.width = cs.height = 256;
+  const xs = cs.getContext("2d");
+  xs.fillStyle = "#f4f6f8"; xs.beginPath(); xs.arc(128, 128, 118, 0, Math.PI * 2); xs.fill();
+  xs.lineWidth = 26; xs.strokeStyle = "#d9322a"; xs.stroke();
+  xs.fillStyle = "#141619"; xs.font = "bold 78px Arial, sans-serif"; xs.textAlign = "center"; xs.textBaseline = "middle";
+  xs.fillText("4,0m", 128, 132);
+  const texAlt = new THREE.CanvasTexture(cs);
+  texAlt.colorSpace = THREE.SRGBColorSpace;
+  const matAlt = new THREE.MeshStandardMaterial({ map: texAlt, roughness: 0.45, transparent: true });
+  matsPaso.push(matAlt);
+  const discoAlt = new THREE.Mesh(new THREE.CircleGeometry(0.34, 32), matAlt);
+  discoAlt.position.set(0, -0.45, Z_BAJO + 0.025);
+  paso.add(discoAlt);
+}
+// Vías del tren y barandas sobre la losa, cruzando la calle
+const ripio = caja(70, 0.35, 4.2, mat(0x5b5651, { roughness: 1, transparent: true }), 0.05);
+ripio.position.set(0, 0.85, 0);
+paso.add(ripio);
+matsPaso.push(ripio.material);
+const acero = mat(0x9aa1a8, { metalness: 0.8, roughness: 0.32, transparent: true });
+matsPaso.push(acero);
+for (const z of [-0.75, 0.75]) {
+  const r = caja(70, 0.15, 0.12, acero, 0.02);
+  r.position.set(0, 1.1, z);
+  paso.add(r);
+}
+for (const z of [-Z_BAJO + 0.25, Z_BAJO - 0.25]) { // barandas metálicas del puente ferroviario
+  for (const y of [1.15, 1.55]) {
+    const pasamano = caja(ANCHO + 2.8, 0.06, 0.06, acero, 0.01);
+    pasamano.position.set(0, y, z);
+    paso.add(pasamano);
+  }
+  for (let x = -5.8; x <= 5.81; x += 1.45) {
+    const posteB = caja(0.06, 0.9, 0.06, acero, 0.01);
+    posteB.position.set(x, 1.15, z);
+    paso.add(posteB);
+  }
+}
+const madera = mat(0x4a3b2c, { roughness: 1, transparent: true });
+matsPaso.push(madera);
+for (let x = -34; x <= 34; x += 0.9) {
+  const d = caja(0.28, 0.12, 2.4, madera, 0.02);
+  d.position.set(x, 1.0, 0);
+  paso.add(d);
+}
+// Luces del túnel
+for (let z = -6; z <= 6; z += 3) {
+  const l = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.06, 0.3), matLuz);
+  l.position.set(0, -1.33, z);
+  paso.add(l);
+  const p = new THREE.PointLight(0xffe2a8, 0, 8);
+  p.position.set(0, -1.9, z);
+  p.userData.luzTunel = true;
+  paso.add(p);
+}
+paso.visible = false;
+scene.add(paso);
+
+// Suelo (alrededor de la zanja del paso bajo nivel) y veredas
+const matSuelo = mat(0x26302a, { roughness: 1, transparent: true });
+matsPaso.push(matSuelo);
+for (const [w, d, x, z] of [[60, 140, -ANCHO / 2 - 30.4, 0], [60, 140, ANCHO / 2 + 30.4, 0],
+  [ANCHO + 0.8, 44, 0, Z_RAMPA + 22], [ANCHO + 0.8, 44, 0, -Z_RAMPA - 22]]) {
+  const s = new THREE.Mesh(new THREE.PlaneGeometry(w, d), matSuelo);
+  s.rotation.x = -Math.PI / 2;
+  s.position.set(x, -0.01, z);
+  s.receiveShadow = true;
+  paso.add(s);
+}
+

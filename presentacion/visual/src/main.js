@@ -805,3 +805,29 @@ const ubicar = c => {
 const luzTunel = { v: 0 };
 const giro = { v: 1 };
 
+// ---------- Interfaz ----------
+const $ = s => document.querySelector(s);
+const total = { v: 0 };
+const fmt = v => "$" + Math.round(v).toLocaleString("es-AR");
+const miniLuces = [["#mini .r", "rojo"], ["#mini .a", "amarillo"], ["#mini .v", "verde"]]
+  .map(([sel, n]) => [document.querySelector(sel), luces[n]]);
+const pintarTotal = () => { $("#total-num").textContent = fmt(total.v); };
+
+// ---------- Línea de tiempo por etapas ----------
+const tl = gsap.timeline({ paused: true, defaults: { duration: 1.2, ease: "power2.inOut" } });
+const etapas = ["inicio"];
+tl.addLabel("inicio", 0);
+// Cada etapa arranca al final de la anterior; el set vacío sirve de ancla para los "<" que siguen.
+const etapa = nombre => { const t = tl.duration(); tl.addLabel(nombre, t); tl.set({}, {}, t); etapas.push(nombre); };
+const tarjeta = (sel, entra = true) => tl.to(sel, { opacity: entra ? 1 : 0, x: entra ? 0 : 40, duration: 0.6 }, "<");
+const aparecer = (obj, extra = {}) => {
+  const e = obj.userData.escalaVista || obj.userData.escala || 1;
+  return tl.to(obj.scale, { x: e, y: e, z: e, ease: "back.out(1.6)", ...extra }, "<");
+};
+const sumar = hasta => tl.to(total, { v: hasta, duration: 1.0, ease: "power1.out", onUpdate: pintarTotal }, "<");
+const camara = (p, o, dur = 2.4) => {
+  tl.to(camera.position, { x: p[0], y: p[1], z: p[2], duration: dur, onUpdate: () => camera.lookAt(objetivo) }, "<");
+  tl.to(objetivo, { x: o[0], y: o[1], z: o[2], duration: dur }, "<");
+};
+gsap.set(".tarjeta", { x: 40 });
+

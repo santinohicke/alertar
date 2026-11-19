@@ -238,3 +238,21 @@ pre.json .n { color: #9ccfd8; font-style: normal; }
 .fuente-link { position: absolute; left: 96px; top: 812px; width: 1408px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 18px; color: var(--text-3); text-decoration: none; pointer-events: auto; }
 .fuente-link:hover { color: var(--celeste); text-decoration: underline; }
 
+/* Fuentes: links chiquitos abajo de cada dato */
+.fuentes { position: absolute; left: 96px; width: 1408px; display: flex; gap: 40px; }
+.fuentes a { flex: 1; min-width: 0; font-size: 17px; color: var(--text-3); text-decoration: none; pointer-events: auto;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fuentes a:hover { color: var(--celeste); text-decoration: underline; }
+/* Alertas meteorológicas */
+.dos-col.alertas .panel p { margin-bottom: 18px; }
+.cifras { display: flex; gap: 40px; }
+.cifras div { font-size: 28px; color: var(--text-2); }
+.cifras b { display: block; font-size: 88px; font-weight: 800; color: var(--celeste); line-height: 1; letter-spacing: -2px; }
+
+/* Los recuadros del 3D no reciben clics (si no, tapan los links de las diapositivas) */
+#total, #mini, #seccion, #titulo, .tarjeta { pointer-events: none; }
+
+/* Aclaración chiquita del precio con pantalla y semáforo */
+.nota-precio { font-size: 24px; color: var(--text-2); margin-top: 18px; line-height: 1.3; }
+#d-muerte .nota-precio { position: absolute; margin: 0; }
+.modelo .nota-precio { font-size: 22px; color: var(--text-3); margin-top: 14px; }

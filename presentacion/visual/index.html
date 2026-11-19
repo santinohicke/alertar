@@ -210,6 +210,61 @@
   </div>
 </section>
 
+<!-- Datos y comunicación -->
+<section class="diapo" id="d-datos">
+  <p class="cab">Datos y comunicación</p>
+  <h2 id="datos-tit">El evento que viaja</h2>
+  <div class="diag">
+    <div class="ext" style="left:0"><i class="ico" data-ico="chip"></i>Túnel</div>
+    <div class="ext" style="right:0"><i class="ico" data-ico="servidor"></i>Servidor</div>
+    <div class="cable" id="cable"></div>
+    <div class="corte" id="corte" style="opacity:0"><i class="ico" data-ico="sinwifi"></i>Sin internet</div>
+    <div class="candado" id="candado" style="opacity:0"><i class="ico" data-ico="candado"></i></div>
+    <div class="paquete" id="pq-json" style="opacity:0">{ JSON }</div>
+    <div class="paquete ack" id="pq-ack" style="opacity:0">"guardado": true</div>
+    <div class="paquete" id="pq-a" style="opacity:0">{ evento }</div>
+    <div class="paquete" id="pq-b" style="opacity:0">{ evento }</div>
+    <div class="paquete" id="pq-lote" style="opacity:0">{ 9 eventos }</div>
+    <div class="cola" id="cola"></div>
+  </div>
+  <div class="abajo" id="dat-json" style="top:455px">
+<pre class="json"><span>{</span><span>  <i class="k">"version"</i>: <i class="n">1</i>,</span><span>  <i class="k">"dispositivo_id"</i>: <i class="s">"esp32-01"</i>,</span><span>  <i class="k">"paso_id"</i>: <i class="s">"tunel-01"</i>,</span><span>  <i class="k">"evento_id"</i>: <i class="s">"esp32-01-&lt;instalacion&gt;-&lt;secuencia&gt;"</i>,</span><span>  <i class="k">"arranque_id"</i>: <i class="s">"a1b2…"</i>,</span><span>  <i class="k">"secuencia"</i>: <i class="n">4294967296001</i>,</span><span>  <i class="k">"uptime_ms"</i>: <i class="n">120000</i>,</span><span>  <i class="k">"medido_en"</i>: <i class="s">"2026-11-13T18:09:41Z"</i>,</span><span>  <i class="k">"codigo"</i>: <i class="s">"ERR-001"</i>,</span><span>  <i class="k">"diagnostico"</i>: <i class="s">"Agua critica confirmada"</i>,</span><span>  <i class="k">"obstruccion_carril1_cm"</i>: <i class="n">70</i>,</span><span>  <i class="k">"obstruccion_carril2_cm"</i>: <i class="n">70</i>,</span><span>  <i class="k">"sensor1_valido"</i>: <i class="b">true</i>,</span><span>  <i class="k">"sensor2_valido"</i>: <i class="b">true</i>,</span><span>  <i class="k">"agua_activa"</i>: <i class="b">true</i>,</span><span>  <i class="k">"agua_pendiente"</i>: <i class="b">false</i></span><span>}</span></pre>
+  </div>
+  <div class="abajo tarjetas3" id="dat-cuando" style="opacity:0">
+    <div class="panel ap"><b>Al cambiar el estado</b>En el momento</div>
+    <div class="panel ap"><b>Cada 15 segundos</b>Si no cambia nada</div>
+    <div class="panel ap"><b>Hasta 9 juntos</b>Primero el más nuevo</div>
+  </div>
+  <div class="abajo tarjetas3" id="dat-corte" style="opacity:0">
+    <div class="panel ap"><b>Guarda 128 eventos</b>32 minutos sin conexión</div>
+    <div class="panel ap"><b>Nunca a medias</b>Un corte de luz no rompe lo guardado</div>
+    <div class="panel ap"><b>Reintenta</b>A los 1, 2, 4, 8, 16 y 32 segundos</div>
+  </div>
+  <div class="abajo tarjetas3" id="dat-vuelve" style="opacity:0">
+    <div class="panel ap"><b>Manda todo lo guardado</b>En lotes de hasta 9</div>
+    <div class="panel ap"><b>Borra solo lo confirmado</b>Cuando el servidor responde «guardado»</div>
+  </div>
+  <div class="abajo tarjetas3" id="dat-seg" style="opacity:0">
+    <div class="panel ap"><i class="ico" data-ico="llave"></i><b>Clave propia por túnel</b>Solo sirve para su paso</div>
+    <div class="panel ap"><i class="ico" data-ico="candado"></i><b>HTTPS obligatorio</b>Valida el certificado del servidor</div>
+    <div class="panel ap"><i class="ico" data-ico="ojo"></i><b>Sin datos personales</b>Sin cámaras ni patentes</div>
+  </div>
+</section>
+
+<section class="diapo" id="d-tecno">
+  <p class="cab">Tecnología</p>
+  <h2>Con qué está hecho</h2>
+  <div class="pila">
+    <div class="capa ap"><div class="q">Firmware</div><div class="t">C++</div><div class="d">ESP32 con FreeRTOS</div></div>
+    <div class="sig ap">→</div>
+    <div class="capa ap"><div class="q">API</div><div class="t">Python</div><div class="d">Flask</div></div>
+    <div class="sig ap">→</div>
+    <div class="capa ap"><div class="q">Base de datos</div><div class="t">SQLite</div><div class="d">Eventos y túneles</div></div>
+    <div class="sig ap">→</div>
+    <div class="capa ap"><div class="q">Panel</div><div class="t">HTML, CSS y JS</div><div class="d">Sin librerías externas</div></div>
+  </div>
+</section>
+
       <div class="cifras"><div><b id="num-est">0</b>Estaciones meteorológicas</div><div><b id="num-pluv">0</b>Pluviómetros</div></div>
     </div>
   </div>

@@ -225,6 +225,35 @@ export function crearDiapos(tl, etapa) {
     ap(".pila > *", "<0.3", { stagger: 0.2 });
 
     // Negocio: lo que cuesta una muerte y un auto, contra un equipo
+    etapa("muerte");
+    cambiar("#d-muerte");
+    barra("#barra-muerte", "#num-muerte", 65000000, "<0.4");
+    ap("#fila-eq1", ">0.2");
+    barra("#barra-eq1", "#num-eq1", 3409000, "<0.2");
+    ap("#res-muerte", ">0.3");
+    ap("#nota-muerte", ">0.2");
+
+    etapa("caba");
+    cambiar("#d-caba");
+    puntosMapa("#mapa-caba", "<0.4");
+    contar("#num-caba-total", 0, 98861000, pesos, "<", 1.6);
+
+    etapa("conurbano-total");
+    cambiar("#d-gbatotal");
+    puntosMapa("#mapa-gba-total", "<0.4");
+    contar("#num-gba-total", 0, 306810000, pesos, "<", 1.8);
+
+    etapa("modelo");
+    cambiar("#d-modelo");
+    ap(".modelo .panel", "<0.3", { stagger: 0.3 });
+    etapa("clientes");
+    ap(".clientes .t");
+    ap(".clientes .chip", "<0.2", { stagger: 0.18 });
+
+    // Paso al panel en vivo
+    etapa("panel");
+    cambiar("#d-fin");
+    tl.set("#d-fin .url", { pointerEvents: "auto" }, "<0.1");
   }
 
   return { intro, salir, cierre };

@@ -164,3 +164,41 @@ pre.json .n { color: #9ccfd8; font-style: normal; }
 .pila .capa .d { font-size: 30px; line-height: 1.35; color: var(--text-2); }
 .pila .sig { align-self: center; width: 56px; flex: none; text-align: center; font-size: 44px; color: var(--text-3); }
 
+/* Negocio: barras */
+.fila-barra { position: absolute; left: 96px; width: 1408px; }
+.fila-barra .et { font-size: 36px; margin-bottom: 16px; display: flex; align-items: baseline; gap: 22px; }
+.fila-barra .et > b { font-size: 48px; font-variant-numeric: tabular-nums; }
+.barra { height: 90px; border-radius: 8px; transform-origin: left; }
+.barra.roja { background: var(--crit); }
+.barra.celeste { background: var(--celeste); }
+.resultado { position: absolute; left: 96px; width: 1408px; font-size: 80px; font-weight: 800; letter-spacing: -1px; }
+.resultado b { color: var(--celeste); }
+#d-caba .izq { position: absolute; left: 96px; top: 200px; width: 620px; height: 670px; }
+#d-gbatotal .izq { position: absolute; left: 60px; top: 180px; width: 720px; height: 700px; }
+#d-gbatotal .der { position: absolute; left: 820px; top: 300px; width: 690px; }
+#d-gbatotal .cuenta { font-size: 44px; color: var(--text-2); }
+#d-gbatotal .total { font-size: 86px; font-weight: 800; color: var(--celeste); letter-spacing: -3px; line-height: 1.05; margin-top: 14px; }
+#d-caba .der { position: absolute; left: 820px; top: 280px; width: 690px; }
+#d-caba .cuenta { font-size: 44px; color: var(--text-2); }
+#d-caba .total { font-size: 92px; font-weight: 800; color: var(--celeste); letter-spacing: -3px; line-height: 1.05; margin-top: 14px; }
+#d-caba .total small { display: block; font-size: 44px; color: var(--text); letter-spacing: 0; font-weight: 600; }
+.modelo { position: absolute; left: 96px; top: 210px; width: 1408px; display: flex; gap: 36px; }
+.modelo .panel { flex: 1; padding: 32px 44px; font-size: 30px; color: var(--text-2); line-height: 1.3; }
+.modelo .panel b { display: block; font-size: 44px; color: var(--text); margin-bottom: 6px; }
+.modelo .precio { font-size: 68px; font-weight: 800; color: var(--celeste); margin: 14px 0 6px; letter-spacing: -1px; }
+.clientes { position: absolute; left: 96px; top: 600px; width: 1408px; display: flex; gap: 48px; }
+.grupo-cli { flex: 1.55; }
+.grupo-int { flex: 1; }
+.clientes .t { font-size: 26px; color: var(--text-3); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 14px; }
+.clientes .chip { font-size: 27px; padding: 12px 24px; margin: 0 12px 12px 0; }
+.chip { display: inline-block; padding: 16px 30px; border-radius: 999px; border: 1px solid var(--border-strong);
+  font-size: 32px; margin: 0 14px 14px 0; background: var(--surface); }
+.chip.int { border-color: rgba(79, 195, 247, .45); color: var(--celeste); }
+
+/* Cierre */
+#d-fin { display: grid; grid-template-columns: auto auto; place-content: center; gap: 90px; align-items: center; }
+#d-fin img.qr { width: 470px; border-radius: 12px; background: #fff; padding: 16px; }
+#d-fin h2 { font-size: 80px; }
+#d-fin .url { display: inline-block; font-size: 52px; color: var(--celeste); margin-top: 22px; font-weight: 700; text-decoration: none; pointer-events: none; }
+#d-fin .url:hover { text-decoration: underline; }
+

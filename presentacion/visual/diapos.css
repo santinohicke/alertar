@@ -202,3 +202,39 @@ pre.json .n { color: #9ccfd8; font-style: normal; }
 #d-fin .url { display: inline-block; font-size: 52px; color: var(--celeste); margin-top: 22px; font-weight: 700; text-decoration: none; pointer-events: none; }
 #d-fin .url:hover { text-decoration: underline; }
 
+/* ================= Capa del 3D (hardware) ================= */
+#titulo { position: fixed; inset: 0; display: grid; place-content: center; text-align: center; pointer-events: none; opacity: 0; }
+#titulo h1 { font-size: calc(96 * var(--u)); margin: 0; }
+#titulo p { font-size: calc(38 * var(--u)); color: var(--text-2); margin: calc(14 * var(--u)) 0 0; }
+#seccion { position: fixed; left: calc(60 * var(--u)); top: calc(48 * var(--u)); font-size: calc(24 * var(--u));
+  color: var(--celeste); letter-spacing: 3px; text-transform: uppercase; font-weight: 600; opacity: 0; }
+.tarjeta { position: fixed; right: calc(56 * var(--u)); top: 50%; width: calc(560 * var(--u)); transform: translateY(-50%);
+  background: rgba(20, 23, 27, .92); border: 1px solid var(--border); border-radius: 8px;
+  padding: calc(38 * var(--u)) calc(42 * var(--u)); opacity: 0; pointer-events: none; }
+.tarjeta h2 { margin: 0 0 calc(8 * var(--u)); font-size: calc(46 * var(--u)); line-height: 1.1; }
+.tarjeta .sub { color: var(--text-2); font-size: calc(28 * var(--u)); margin: 0 0 calc(20 * var(--u)); }
+.tarjeta ul { margin: 0 0 calc(20 * var(--u)); padding-left: calc(30 * var(--u)); font-size: calc(31 * var(--u)); line-height: 1.4; }
+.tarjeta .precio { font-size: calc(60 * var(--u)); font-weight: 800; color: var(--celeste); }
+.tarjeta table { width: 100%; font-size: calc(30 * var(--u)); border-collapse: collapse; margin-bottom: calc(10 * var(--u)); }
+.tarjeta td { padding: calc(10 * var(--u)) 0; border-bottom: 1px solid var(--border); }
+.tarjeta td:last-child { text-align: right; color: var(--celeste); font-weight: 700; white-space: nowrap; padding-left: calc(16 * var(--u)); }
+#total { position: fixed; left: calc(60 * var(--u)); bottom: calc(50 * var(--u)); background: rgba(20, 23, 27, .92);
+  border-radius: 8px; padding: calc(18 * var(--u)) calc(28 * var(--u)); border: 1px solid var(--border); opacity: 0; }
+#total .etq { font-size: calc(22 * var(--u)); color: var(--text-2); text-transform: uppercase; letter-spacing: 2px; }
+#total .num { font-size: calc(58 * var(--u)); font-weight: 800; color: var(--celeste); font-variant-numeric: tabular-nums; }
+#mini { position: fixed; left: calc(60 * var(--u)); bottom: calc(50 * var(--u)); background: rgba(20, 23, 27, .92);
+  border-radius: 8px; border: 1px solid var(--border); padding: calc(18 * var(--u)) calc(26 * var(--u));
+  display: flex; align-items: center; gap: calc(16 * var(--u)); opacity: 0; }
+#mini span { font-size: calc(22 * var(--u)); color: var(--text-2); text-transform: uppercase; letter-spacing: 2px; margin-right: calc(6 * var(--u)); }
+#mini i { width: calc(40 * var(--u)); height: calc(40 * var(--u)); border-radius: 50%; opacity: .18; }
+#mini .r { background: var(--crit); box-shadow: 0 0 calc(20 * var(--u)) var(--crit); }
+#mini .a { background: var(--warn); box-shadow: 0 0 calc(20 * var(--u)) var(--warn); }
+#mini .v { background: var(--ok); box-shadow: 0 0 calc(20 * var(--u)) var(--ok); }
+#progreso { position: fixed; left: 0; bottom: 0; height: calc(5 * var(--u)); width: 100%; background: rgba(255, 255, 255, .05); }
+#progreso i { display: block; height: 100%; width: 0; background: var(--celeste); transition: width .5s; }
+
+#d-conurbano .foto { height: 330px; margin-top: 30px; }
+
+.fuente-link { position: absolute; left: 96px; top: 812px; width: 1408px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 18px; color: var(--text-3); text-decoration: none; pointer-events: auto; }
+.fuente-link:hover { color: var(--celeste); text-decoration: underline; }
+

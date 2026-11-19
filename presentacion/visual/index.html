@@ -170,6 +170,46 @@
   </div>
 </section>
 
+<!-- Cómo funciona -->
+<section class="diapo" id="d-logica">
+  <p class="cab">Cómo funciona por dentro</p>
+  <h2>Los 9 estados, agrupados por color</h2>
+  <div class="colores">
+    <div class="color" id="col-verde">
+      <div class="luz"></div>
+      <div class="estado">HABILITADO</div>
+      <div class="cod ap"><span class="mono">OK-001</span>Carriles libres</div>
+      <div class="cod ap"><span class="mono">INF-001</span>Auto circulando</div>
+    </div>
+    <div class="color" id="col-amarillo">
+      <div class="luz"></div>
+      <div class="estado">PRECAUCIÓN</div>
+      <div class="cod ap"><span class="mono">ERR-002</span>Posible agua</div>
+      <div class="cod ap"><span class="mono">ERR-003</span>Sensor sin lectura</div>
+      <div class="cod ap"><span class="mono">ERR-004</span>Ambos ocupados, uno 60 s</div>
+      <div class="cod ap"><span class="mono">ERR-006</span>Algo de más de 1 m, 60 s</div>
+      <div class="cod ap"><span class="mono">ERR-007</span>Un carril ocupado 60 s</div>
+    </div>
+    <div class="color" id="col-rojo">
+      <div class="luz"></div>
+      <div class="estado">CERRADO</div>
+      <div class="cod ap"><span class="mono">ERR-001</span>Agua confirmada 20 s</div>
+      <div class="cod ap"><span class="mono">ERR-005</span>Los dos carriles bloqueados 60 s</div>
+    </div>
+  </div>
+</section>
+
+<section class="diapo" id="d-failsafe">
+  <p class="cab">Cómo funciona por dentro</p>
+  <h2>Por qué es seguro</h2>
+  <div class="grid4">
+    <div class="panel ap"><i class="ico" data-ico="prohibido"></i><div>Nunca queda en verde ante una falla: si un sensor no mide, pasa a amarillo</div></div>
+    <div class="panel ap"><i class="ico" data-ico="gota"></i><div>El agua confirmada manda sobre todo, aunque falle un ultrasónico</div></div>
+    <div class="panel ap"><i class="ico" data-ico="reloj"></i><div>Exige 20 s de agua y 60 s de bloqueo para evitar falsas alarmas</div></div>
+    <div class="panel ap"><i class="ico" data-ico="escudo"></i><div>Doble aviso en el túnel y batería de respaldo ante cortes de luz</div></div>
+  </div>
+</section>
+
       <div class="cifras"><div><b id="num-est">0</b>Estaciones meteorológicas</div><div><b id="num-pluv">0</b>Pluviómetros</div></div>
     </div>
   </div>

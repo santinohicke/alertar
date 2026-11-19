@@ -154,5 +154,78 @@ export function crearDiapos(tl, etapa) {
   // Sale de la última diapositiva antes del 3D
   function salir() { cambiar(null); }
 
-  return { intro, salir };
+  // ================= Después del hardware =================
+  function cierre(ocultar3D) {
+    // Cómo funciona: los tres colores se van armando
+    const encender = (id, color) => {
+      tl.to(id, { opacity: 1, borderColor: color, duration: 0.5 }, "<");
+      tl.to(id + " .luz", { backgroundColor: color, boxShadow: `0 0 50px ${color}`, duration: 0.5 }, "<");
+      tl.to(id + " .estado", { color, duration: 0.5 }, "<");
+      ap(id + " .cod", "<0.2", { stagger: 0.18 });
+    };
+    etapa("logica");
+    ocultar3D();
+    cambiar("#d-logica");
+    encender("#col-verde", COLOR.ok);
+    etapa("logica2");
+    encender("#col-amarillo", COLOR.warn);
+    etapa("logica3");
+    encender("#col-rojo", COLOR.crit);
+    etapa("failsafe");
+    cambiar("#d-failsafe");
+    ap("#d-failsafe .panel", "<0.3", { stagger: 0.3 });
+
+    // Datos y comunicación: el JSON viaja del túnel al servidor, despacio para poder leerlo
+    const tit = "#datos-tit";
+    etapa("datos");
+    cambiar("#d-datos");
+    viajar("#pq-json", ...IDA, "<0.8", 3.2);
+    tl.to("pre.json span", { opacity: 1, duration: 0.15, stagger: 0.32 }, "<");
+    viajar("#pq-ack", ...VUELTA, ">0.4", 2.6);
+
+    etapa("datos-cuando");
+    texto(tit, "El evento que viaja", "Cuándo se manda");
+    tl.to("#dat-json", { opacity: 0, duration: 0.4 }, "<");
+    tl.to("#dat-cuando", { opacity: 1, duration: 0.4 }, "<0.2");
+    ap("#dat-cuando .panel", "<", { stagger: 0.3 });
+    viajar("#pq-a", ...IDA, "<", 2.2);
+    viajar("#pq-b", ...IDA, ">0.3", 2.2);
+    viajar("#pq-lote", ...IDA, ">0.3", 2.4);
+
+    etapa("datos-corte");
+    texto(tit, "Cuándo se manda", "Si se corta internet");
+    tl.to("#dat-cuando", { opacity: 0, duration: 0.4 }, "<");
+    tl.to("#dat-corte", { opacity: 1, duration: 0.4 }, "<0.2");
+    ap("#dat-corte .panel", "<", { stagger: 0.3 });
+    tl.to("#cable", { backgroundColor: COLOR.crit, opacity: 0.45, duration: 0.4 }, "<");
+    tl.to("#corte", { opacity: 1, duration: 0.3 }, "<");
+    tl.to("#cola i", { opacity: 1, scale: 1, duration: 0.15, stagger: 0.1 }, "<0.4");
+
+    etapa("datos-vuelve");
+    texto(tit, "Si se corta internet", "Cuando vuelve internet");
+    tl.to("#dat-corte", { opacity: 0, duration: 0.4 }, "<");
+    tl.to("#dat-vuelve", { opacity: 1, duration: 0.4 }, "<0.2");
+    ap("#dat-vuelve .panel", "<", { stagger: 0.3 });
+    tl.to("#cable", { backgroundColor: COLOR.ok, opacity: 1, duration: 0.4 }, "<");
+    tl.to("#corte", { opacity: 0, duration: 0.3 }, "<");
+    viajar("#pq-lote", ...IDA, "<0.3", 2.2);
+    tl.to("#cola i", { opacity: 0, scale: 0.3, duration: 0.12, stagger: { each: 0.08, from: "end" } }, "<");
+    viajar("#pq-ack", ...VUELTA, ">0.2", 2.2);
+
+    etapa("seguridad");
+    texto(tit, "Cuando vuelve internet", "Seguridad");
+    tl.to("#dat-vuelve", { opacity: 0, duration: 0.4 }, "<");
+    tl.to("#dat-seg", { opacity: 1, duration: 0.4 }, "<0.2");
+    ap("#dat-seg .panel", "<", { stagger: 0.3 });
+    tl.to("#candado", { opacity: 1, duration: 0.4 }, "<");
+
+    // Tecnología
+    etapa("tecnologia");
+    cambiar("#d-tecno");
+    ap(".pila > *", "<0.3", { stagger: 0.2 });
+
+    // Negocio: lo que cuesta una muerte y un auto, contra un equipo
+  }
+
+  return { intro, salir, cierre };
 }

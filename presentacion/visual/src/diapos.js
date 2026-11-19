@@ -89,5 +89,70 @@ export function crearDiapos(tl, etapa) {
     contar(montoSel, 0, monto, pesos, "<", 1.1);
   };
 
-  return {};
+  // ================= Antes del hardware =================
+  function intro() {
+    // El problema: una noticia por diapositiva
+    for (let i = 1; i <= 4; i++) {
+      etapa("noticia" + i);
+      cambiar(`#d-n${i}`);
+      tl.to(`#d-n${i} .noticia-foto img`, { scale: 1, duration: 2.5, ease: "power2.out" }, "<");
+      ap(`#d-n${i} .noticia-txt`, "<0.2", { x: 0 });
+    }
+
+    // Cuántos pasos hay: número y foto, después el mapa, después el conurbano
+    etapa("pasos");
+    cambiar("#d-pasos");
+    contar("#num-caba", 0, 29, entero, "<0.2", 1.1);
+    ap("#foto-paso", "<0.3");
+    tl.to("#mapa-pasos", { opacity: 1, duration: 0.6 }, "<0.2");
+    puntosMapa("#mapa-pasos", "<0.2");
+    etapa("conurbano");
+    cambiar("#d-conurbano");
+    contar("#num-gba", 0, PASOS_GBA, entero, "<0.2", 1.2);
+    ap("#foto-gba", "<0.3");
+    tl.to("#mapa-gba", { opacity: 1, duration: 0.6 }, "<0.2");
+    tl.to("#mapa-gba .punto", { opacity: 1, scale: 1, duration: 0.3, ease: "back.out(2.5)", stagger: 0.015 }, "<0.2");
+
+    // Cada vez llueve más
+    etapa("lluvia2030");
+    cambiar("#d-lluvia");
+    ap("#lluvia1", "<0.3");
+    tl.to(".barras i", { scaleY: 1, duration: 0.9, stagger: 0.25, ease: "power2.out" }, "<0.3");
+    etapa("superNino");
+    ap("#lluvia2");
+    tl.to(".meses div", { opacity: 1, x: 0, duration: 0.5, stagger: 0.2 }, "<0.3");
+
+    // Cómo se resuelve hoy
+    etapa("hoy");
+    cambiar("#d-hoy1");
+    tl.to("#lt1", { opacity: 1, y: 0, duration: 0.5 }, "<0.4");
+    tl.to("#lf1", { scaleX: 1, duration: 0.6 }, ">");
+    tl.to("#lt2", { opacity: 1, y: 0, duration: 0.5 }, ">");
+    tl.to("#lf2", { scaleX: 1, duration: 0.6 }, ">");
+    tl.to("#lt3", { opacity: 1, y: 0, duration: 0.6, ease: "back.out(2)" }, ">");
+    ap("#cita-hoy", ">0.3");
+    etapa("alertas");
+    cambiar("#d-hoy2");
+    ap("#d-hoy2 .panel", "<0.3", { stagger: 0.25 });
+    contar("#num-est", 0, 18, entero, "<0.3", 1.0);
+    contar("#num-pluv", 0, 92, entero, "<0.2", 1.0);
+    etapa("ninguno");
+    tl.to("#sello-hoy", { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(3)" }, "<");
+
+    // La solución
+    etapa("solucion");
+    cambiar("#d-solucion");
+    ap("#sol-encab", "<0.3");
+    ap(".tres .panel", ">-0.2", { stagger: 0.25 });
+    for (let i = 1; i <= 4; i++) {
+      etapa("diferencia" + i);
+      if (i === 1) cambiar("#d-difs");
+      ap("#dif" + i, i === 1 ? "<0.4" : "<");
+    }
+  }
+
+  // Sale de la última diapositiva antes del 3D
+  function salir() { cambiar(null); }
+
+  return { intro, salir };
 }

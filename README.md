@@ -2,6 +2,9 @@
 
 AlertAR es un prototipo de ciudad inteligente para monitorear un paso bajo nivel. Un ESP32 toma mediciones de dos carriles y de presencia de agua, evalúa el riesgo localmente, informa el estado mediante semáforo y pantalla LCD, y envía eventos a una API REST cuando tiene conexión.
 
+**Presentación:** https://alertar-presentacion.pages.dev  
+**Dashboard:** https://alertar.pages.dev
+
 **Repositorio:** [santinohicke/alertar](https://github.com/santinohicke/alertar) · **Arquitectura:** ESP32 + FreeRTOS + Flask REST API + SQLite.
 
 El repositorio contiene el firmware, el circuito de simulación, el backend Flask, el panel y los scripts de despliegue. No incluye claves API, bases de datos, respaldos ni firmware compilado. La API FastAPI anterior que ya estaba instalada en la Raspberry Pi no forma parte de este proyecto; el adaptador de `deploy/raspi/` se integra con ella.

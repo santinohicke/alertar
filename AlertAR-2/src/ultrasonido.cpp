@@ -75,7 +75,9 @@ float leer(int trig, int echo) {
   portEXIT_CRITICAL(&s.mux);
   if (duracion == 0 || duracion > 30000) { ++fallosLectura; return -1; }
   float distancia = duracion * 0.0343f / 2.0f;
+  // Márgenes de redondeo en los extremos del rango (2 y 400 cm): el eco se mide en µs enteros.
   if (distancia > 400 && distancia <= 410) distancia = 400;
+  if (distancia >= 1.5f && distancia < 2) distancia = 2;
   if (distancia < 2 || distancia > 400) ++fallosLectura;
   return distancia;
 }

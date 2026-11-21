@@ -49,6 +49,10 @@ constexpr uint32_t PERSISTENCIA_MS = 60000;
 // desaparecida una obstrucción persistente.
 constexpr uint32_t LIBERAR_CARRIL_MS = 3000;
 
+// Lecturas inválidas seguidas para declarar falla de sensor. Un eco perdido
+// aislado no cambia el estado.
+constexpr uint8_t LECTURAS_INVALIDAS = 3;
+
 
 // ============================================================
 // AGUA
@@ -138,6 +142,8 @@ struct Carril {
 
   bool anteriorValido = false;
 
+  uint8_t invalidasSeguidas = 0;
+
 
   float altura = 0;
 
@@ -176,7 +182,7 @@ struct Carril {
       uint32_t ahora
   ) {
 
-    valido =
+    const bool lectura =
         isfinite(distancia) &&
         distancia >= DISTANCIA_MINIMA &&
         distancia <= DISTANCIA_MAXIMA;
@@ -190,13 +196,27 @@ struct Carril {
 
     // Si el sensor no produjo una lectura válida,
     // conservamos el estado anterior pero NO contamos tiempo.
-    if (!valido) {
+    // El sensor pasa a inválido recién después de varias lecturas
+    // inválidas seguidas.
+    if (!lectura) {
+
+      if (invalidasSeguidas < LECTURAS_INVALIDAS) {
+        ++invalidasSeguidas;
+      }
+
+      if (invalidasSeguidas >= LECTURAS_INVALIDAS) {
+        valido = false;
+      }
 
       anteriorValido = false;
       liberando = false;
 
       return;
     }
+
+
+    invalidasSeguidas = 0;
+    valido = true;
 
 
     // Convertir distancia sensor-objeto a altura del objeto.

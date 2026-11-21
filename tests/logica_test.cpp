@@ -27,7 +27,10 @@ int main() {
   baja.actualizar(280,61000); codigo(baja,libre,w,"ERR-007");
   assert(baja.altaMs==0); baja.actualizar(280,121000);
   codigo(baja,libre,w,"ERR-006");
-  a.actualizar(-1,61000); codigo(a,libre,w,"ERR-003");
+  // Una o dos lecturas inválidas aisladas no declaran falla; tres seguidas sí.
+  a.actualizar(-1,61000); codigo(a,libre,w,"ERR-006");
+  a.actualizar(-1,61300); codigo(a,libre,w,"ERR-006");
+  a.actualizar(-1,61600); codigo(a,libre,w,"ERR-003");
   assert(a.ocupacionMs==60000); a.actualizar(280,120000);
   codigo(a,libre,w,"ERR-006");
   a.actualizar(400,121000); codigo(a,libre,w,"ERR-006");
@@ -64,6 +67,12 @@ int main() {
   camion.actualizar(100,59999); codigo(camion,libre,w,"INF-001");
   camion.actualizar(100,60000); codigo(camion,libre,w,"ERR-006");
   Carril extremo; extremo.actualizar(2,0); assert(extremo.valido);
+  // Una lectura válida reinicia la cuenta de inválidas.
+  Carril intermitente=medir(0);
+  for (int i=0; i<10; ++i) {
+    intermitente.actualizar(-1,i*600); intermitente.actualizar(400,i*600+300);
+    assert(intermitente.valido);
+  }
   // Bajos y mixtos tampoco alertan antes de 60 s.
   for(float h : {5.1f,20.f,50.f,100.f,120.f,300.f}) {
     Carril c=medir(h), otro=medir(20);

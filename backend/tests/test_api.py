@@ -92,7 +92,8 @@ class ApiTests(unittest.TestCase):
         return self.client.post("/api/eventos/lote", json={"eventos": eventos})
 
     def test_batch_saves_each_event_and_reports_individually(self):
-        e = lambda s, **c: {**self.event, "evento_id": f"esp32-01-{s}", "secuencia": s, **c}
+        def e(s, **c):
+            return {**self.event, "evento_id": f"esp32-01-{s}", "secuencia": s, **c}
         self.assertEqual(self.post(**e(2)).status_code, 201)
         r = self.lote([e(9), e(2), e(3, codigo="NADA"), e(4), e(2, diagnostico="otro")])
         self.assertEqual(r.status_code, 200)

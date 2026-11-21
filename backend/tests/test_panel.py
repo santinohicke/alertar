@@ -39,7 +39,9 @@ class PanelTests(unittest.TestCase):
 
     def test_device_key_can_only_ingest(self):
         self.assertEqual(self.client.post("/api/eventos", json=self.event, headers=self.headers(True)).status_code, 201)
-        self.assertEqual(self.client.post("/api/dispositivos/esp32-01/reserva", json={"instalacion_id":"f"*32}, headers=self.headers(True)).status_code, 201)
+        reserva = self.client.post("/api/dispositivos/esp32-01/reserva", json={"instalacion_id": "f" * 32},
+                                   headers=self.headers(True))
+        self.assertEqual(reserva.status_code, 201)
         self.assertEqual(self.client.get("/api/panel/tunel-01", headers=self.headers(True)).status_code, 401)
 
     def test_login_csrf_cookie_and_read_only_session(self):
@@ -143,7 +145,8 @@ class TunelesTests(PanelTests):
 
     def test_rotating_tunel01_revokes_initial_device_key(self):
         # ALERTAR_DEVICE_KEY es solo la clave inicial de tunel-01: después de regenerarla deja de valer.
-        ingesta = lambda k: self.client.post("/api/eventos", json=self.event, headers={"X-API-Key": k})
+        def ingesta(k):
+            return self.client.post("/api/eventos", json=self.event, headers={"X-API-Key": k})
         self.assertEqual(ingesta(self.config["DEVICE_KEY"]).status_code, 201)
         nueva = self.client.post("/api/tuneles/tunel-01/clave", headers=self.headers()).json["api_key"]
         self.assertEqual(ingesta(self.config["DEVICE_KEY"]).status_code, 401)

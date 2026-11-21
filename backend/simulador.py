@@ -154,7 +154,8 @@ class TunelSimulado:
         }.get(cfg["codigo"], "[?]")
 
         if status in (200, 201):
-            print(f"[{datetime.now().strftime('%H:%M:%S')}] {simbolo} [{self.paso_id}] {cfg['codigo']} Sec #{self.secuencia}: {diagnostico}")
+            hora = datetime.now().strftime('%H:%M:%S')
+            print(f"[{hora}] {simbolo} [{self.paso_id}] {cfg['codigo']} Sec #{self.secuencia}: {diagnostico}")
             return True
         else:
             print(f"[!] Error enviando a {self.paso_id} (HTTP {status}): {res.get('detalle', res.get('error', res))}")
@@ -164,7 +165,8 @@ class TunelSimulado:
 def main():
     parser = argparse.ArgumentParser(description="Simulador CLI de Telemetría ESP32 / AlertAR")
     parser.add_argument("--url", default=DEFAULT_URL, help=f"URL base del backend (def: {DEFAULT_URL})")
-    parser.add_argument("--key", default=os.environ.get("ALERTAR_API_KEY", ""), help="Master API Key o Device Key (o variable ALERTAR_API_KEY)")
+    parser.add_argument("--key", default=os.environ.get("ALERTAR_API_KEY", ""),
+                        help="Master API Key o Device Key (o variable ALERTAR_API_KEY)")
     parser.add_argument("--tunel", default=None, help="ID del paso específico (ej: tunel-01). Por defecto: todos los túneles.")
     parser.add_argument("--tipo", choices=["normal", "obstruccion", "agua", "falla", "aleatorio"], default="normal",
                         help="Escenario a simular (def: normal)")

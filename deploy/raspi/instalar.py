@@ -16,9 +16,9 @@ import time
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[2]
-PROJECT = Path(os.environ.get("ALERTAR_PROJECT_DIR", "/opt/alertar"))
-API = Path(os.environ.get("ALERTAR_API_DIR", "/opt/alertar/api"))
-PYTHON = os.environ.get("ALERTAR_PYTHON", "/opt/alertar/venv/bin/python")
+PROJECT = Path("/home/agusttin/Ciudad_Inteligente")
+API = Path("/opt/alertar/api")
+PYTHON = "/opt/alertar/venv/bin/python"
 DROPIN = Path("/etc/systemd/system/alertar-api.service.d/40-alertar-panel.conf")
 
 
@@ -135,7 +135,7 @@ def main():
         run("systemctl", "restart", "alertar-api")
         raise SystemExit("Falló verificación: se restauró configuración anterior. Ver respaldo " + str(backup))
     print(json.dumps({"instalado":True,"respaldo":str(backup),"clave_simulacion_archivo":str(key_header),
-                      "panel": os.environ.get("ALERTAR_PANEL_URL", "https://alertar-api.example.com/"), "api_anterior":"conservada"}))
+                      "panel":"https://raspi.tail5a3b96.ts.net/","api_anterior":"conservada"}))
 
 
 if __name__ == "__main__":

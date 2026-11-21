@@ -11,7 +11,7 @@ class FirmwareContract(unittest.TestCase):
     def test_native_firmware_matches_api(self):
         binary = Path(__file__).resolve().parents[2] / "verificaciones" / "protocolo_test"
         if not binary.exists():
-            self.skipTest("Compilar tests/protocolo_test.cpp según CONECTIVIDAD.md")
+            self.skipTest("Compilar tests/protocolo_test.cpp según docs/conectividad.md")
         result = subprocess.run([str(binary)], check=True, capture_output=True, text=True)
         events = [validate(json.loads(line)) for line in result.stdout.splitlines()]
         self.assertEqual(len(events), 2)

@@ -1,7 +1,9 @@
 """API local de AlertAR. Ejecutar desde backend con flask --app app run."""
 
+import hashlib
 import json
 import math
+import secrets
 import os
 import re
 import sqlite3
@@ -14,12 +16,30 @@ from werkzeug.exceptions import HTTPException
 ROOT = Path(__file__).resolve().parent
 CODES = {"OK-001", "INF-001", *(f"ERR-{i:03}" for i in range(1, 8))}
 IDENTIFIER = re.compile(r"[A-Za-z0-9_-]{1,80}\Z")
+LOTE_MAX = 10  # Eventos por pedido en /api/eventos/lote (el firmware manda hasta 9).
 FIELDS = {
     "version", "evento_id", "dispositivo_id", "paso_id", "arranque_id",
     "secuencia", "uptime_ms", "medido_en", "codigo", "diagnostico",
     "obstruccion_carril1_cm", "obstruccion_carril2_cm", "sensor1_valido",
     "sensor2_valido", "agua_activa", "agua_pendiente",
 }
+
+
+def hash_clave(clave):
+    """Las claves de dispositivo se guardan solo como hash; la clave en claro se muestra una vez."""
+    return "sha256:" + hashlib.sha256(clave.encode()).hexdigest()
+
+
+def _limite(variable, defecto):
+    """Lee "ritmo,ráfaga" desde el entorno; si falta o es inválido usa el valor por defecto."""
+    texto = os.environ.get(variable, "")
+    try:
+        ritmo, rafaga = (float(x) for x in texto.split(","))
+        if ritmo > 0 and rafaga >= 1:
+            return ritmo, rafaga
+    except ValueError:
+        pass
+    return defecto
 
 
 def utcnow():
@@ -91,6 +111,22 @@ def create_app(config=None):
         API_KEY=os.environ.get("ALERTAR_API_KEY", ""),
         DEVICE_KEY=os.environ.get("ALERTAR_DEVICE_KEY", ""),
         RATE_LIMIT_ENABLED=True,
+        # Límites globales por proceso: (pedidos por segundo, ráfaga). Valores pensados para un
+        # servidor (decenas de ESP32 y paneles abiertos). En la Raspberry Pi se bajan desde el
+        # entorno (deploy/raspi/limites.conf). Formato de las variables: "ritmo,ráfaga".
+        RATE_LIMITS={
+            "ingesta": _limite("ALERTAR_LIMITE_INGESTA", (20, 60)),
+            "lectura": _limite("ALERTAR_LIMITE_LECTURA", (30, 90)),
+            "login": _limite("ALERTAR_LIMITE_LOGIN", (0.1, 5)),
+            "admin": _limite("ALERTAR_LIMITE_ADMIN", (2, 10)),
+        },
+        # Pedidos atendidos a la vez; el resto recibe 429 en lugar de acumularse.
+        CONCURRENCIA=int(os.environ.get("ALERTAR_CONCURRENCIA", "16")),
+        # Trabajos pesados a la vez (cada uno ocupa un hilo y CPU durante segundos). Así siempre
+        # quedan hilos libres para el panel en vivo y los ESP32. Los demás reciben 429.
+        CONCURRENCIA_EXPORTAR=int(os.environ.get("ALERTAR_CONCURRENCIA_EXPORTAR", "2")),
+        CONCURRENCIA_ESTADISTICAS=int(os.environ.get("ALERTAR_CONCURRENCIA_ESTADISTICAS", "2")),
+        ENABLE_SIMULATOR=os.environ.get("ALERTAR_ENABLE_SIMULATOR", "0") == "1",
         SESSION_COOKIE_SECURE=os.environ.get("ALERTAR_REQUIRE_AUTH", "0") == "1",
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Strict",
@@ -125,7 +161,38 @@ def create_app(config=None):
                 tamano INTEGER NOT NULL,
                 PRIMARY KEY(dispositivo_id, instalacion_id)
             );
+            CREATE TABLE IF NOT EXISTS tuneles (
+                paso_id TEXT PRIMARY KEY,
+                nombre TEXT NOT NULL,
+                dispositivo_id TEXT NOT NULL UNIQUE,
+                api_key TEXT NOT NULL UNIQUE,
+                creado_en TEXT NOT NULL,
+                ubicacion TEXT,
+                latitud REAL,
+                longitud REAL
+            );
         """)
+        # Duplicado de eventos_paso_recepcion creado por una versión anterior.
+        connection.execute("DROP INDEX IF EXISTS eventos_paso_recibido")
+        columnas = {r["name"] for r in connection.execute("PRAGMA table_info(tuneles)")}
+        for nombre, tipo in (("ubicacion", "TEXT"), ("latitud", "REAL"), ("longitud", "REAL")):
+            if nombre not in columnas:
+                connection.execute(f"ALTER TABLE tuneles ADD COLUMN {nombre} {tipo}")
+        # Migra claves guardadas en claro por versiones anteriores.
+        for fila in connection.execute("SELECT paso_id, api_key FROM tuneles").fetchall():
+            if not fila["api_key"].startswith("sha256:"):
+                connection.execute("UPDATE tuneles SET api_key=? WHERE paso_id=?",
+                                   (hash_clave(fila["api_key"]), fila["paso_id"]))
+        tunel = connection.execute("SELECT paso_id FROM tuneles WHERE paso_id='tunel-01'").fetchone()
+        if not tunel:
+            # ALERTAR_DEVICE_KEY solo se usa aquí, al crear tunel-01 por primera vez. Después vale el
+            # hash guardado: regenerar la clave desde el panel la revoca. Sin variable se genera una
+            # clave aleatoria que nadie conoce; no hay claves por defecto.
+            clave = app.config.get("DEVICE_KEY") or secrets.token_urlsafe(32)
+            connection.execute(
+                "INSERT INTO tuneles (paso_id, nombre, dispositivo_id, api_key, creado_en) VALUES (?, ?, ?, ?, ?)",
+                ("tunel-01", "Túnel 01", "esp32-01", hash_clave(clave), utcnow().isoformat())
+            )
         connection.commit()
         g.pop("db").close()
 
@@ -149,14 +216,26 @@ def create_app(config=None):
         db().execute("SELECT id FROM eventos LIMIT 1").fetchone()
         return jsonify(estado="ok", base_datos="ok")
 
-    @app.post("/api/eventos")
-    def receive():
+    def get_dispositivos():
         try:
-            event = validate(request.get_json())
+            rows = db().execute("SELECT paso_id, dispositivo_id FROM tuneles").fetchall()
+            if rows:
+                return {r["paso_id"]: r["dispositivo_id"] for r in rows}
+        except Exception:
+            pass
+        return current_app.config.get("DISPOSITIVOS", {"tunel-01": "esp32-01"})
+
+    def guardar_evento(body, dispositivos):
+        """Valida y guarda un evento. Devuelve (respuesta, código HTTP) sin abortar el pedido."""
+        try:
+            event = validate(body)
         except ValueError as error:
-            return jsonify(error="evento_invalido", detalle=str(error)), 400
-        if app.config["DISPOSITIVOS"].get(event["paso_id"]) != event["dispositivo_id"]:
-            return jsonify(error="dispositivo_o_paso_no_registrado"), 400
+            return {"error": "evento_invalido", "detalle": str(error)}, 400
+        if dispositivos.get(event["paso_id"]) != event["dispositivo_id"]:
+            return {"error": "dispositivo_o_paso_no_registrado"}, 400
+        auth_paso = getattr(g, "auth_paso_id", None)
+        if auth_paso and auth_paso != event["paso_id"]:
+            return {"error": "clave_no_corresponde_a_este_tunel"}, 403
         payload = json.dumps(event, sort_keys=True, ensure_ascii=False, allow_nan=False)
         connection = db()
         received = utcnow().isoformat()
@@ -172,15 +251,39 @@ def create_app(config=None):
                 (event["dispositivo_id"], event["evento_id"]),
             ).fetchone()
             if previous is None or previous["payload"] != payload:
-                return jsonify(error="conflicto_identidad", detalle="Identificador o secuencia reutilizados con otro evento."), 409
-            return jsonify(guardado=True, duplicado=True, evento_id=event["evento_id"], recibido_en=previous["recibido_en"]), 200
-        return jsonify(guardado=True, duplicado=False, evento_id=event["evento_id"], recibido_en=received), 201
+                return {"error": "conflicto_identidad", "detalle": "Identificador o secuencia reutilizados con otro evento."}, 409
+            return {"guardado": True, "duplicado": True, "evento_id": event["evento_id"], "recibido_en": previous["recibido_en"]}, 200
+        return {"guardado": True, "duplicado": False, "evento_id": event["evento_id"], "recibido_en": received}, 201
+
+    @app.post("/api/eventos")
+    def receive():
+        respuesta, codigo = guardar_evento(request.get_json(), get_dispositivos())
+        return jsonify(respuesta), codigo
+
+    @app.post("/api/eventos/lote")
+    def receive_lote():
+        """Varios eventos en un pedido para vaciar pendientes rápido. Cada evento se guarda y
+        se responde por separado (mismo contrato que /api/eventos); uno inválido no frena al resto."""
+        body = request.get_json()
+        eventos = body.get("eventos") if isinstance(body, dict) else None
+        if not isinstance(eventos, list) or not 1 <= len(eventos) <= LOTE_MAX or set(body) != {"eventos"}:
+            return jsonify(error="lote_invalido", detalle=f"Enviar {{\"eventos\": [...]}} con 1 a {LOTE_MAX} eventos."), 400
+        dispositivos = get_dispositivos()
+        resultados = []
+        for evento in eventos:
+            respuesta, codigo = guardar_evento(evento, dispositivos)
+            resultados.append({"estado": codigo, **respuesta})
+        return jsonify(resultados=resultados), 200
 
     @app.post("/api/dispositivos/<dispositivo_id>/reserva")
     def reserve(dispositivo_id):
         """Rango estable por instalación de flash; repetir el POST es idempotente."""
-        if dispositivo_id not in app.config["DISPOSITIVOS"].values():
+        dispositivos = get_dispositivos()
+        if dispositivo_id not in dispositivos.values():
             return jsonify(error="dispositivo_no_registrado"), 404
+        auth_dev = getattr(g, "auth_device_id", None)
+        if auth_dev and auth_dev != dispositivo_id:
+            return jsonify(error="clave_no_corresponde_a_este_dispositivo"), 403
         body = request.get_json()
         if (not isinstance(body, dict) or set(body) != {"instalacion_id"}
                 or not isinstance(body["instalacion_id"], str)
@@ -240,10 +343,7 @@ def create_app(config=None):
                 raise ValueError()
         except ValueError:
             return jsonify(error="paginacion_invalida"), 400
-        rows = db().execute(
-            "SELECT * FROM eventos WHERE paso_id = ? ORDER BY secuencia DESC LIMIT ? OFFSET ?",
-            (paso_id, limit, offset),
-        ).fetchall()
+        rows = db().execute("SELECT * FROM eventos WHERE paso_id = ? ORDER BY secuencia DESC LIMIT ? OFFSET ?", (paso_id, limit, offset)).fetchall()
         total = db().execute("SELECT COUNT(*) FROM eventos WHERE paso_id = ?", (paso_id,)).fetchone()[0]
         return jsonify(paso_id=paso_id, eventos=[record(row) for row in rows], total=total, limite=limit, offset=offset)
 
@@ -251,5 +351,6 @@ def create_app(config=None):
         from .panel import registrar_panel
     else:
         from panel import registrar_panel
+    app.extensions["alertar_hash"] = hash_clave
     registrar_panel(app, db, state, record)
     return app

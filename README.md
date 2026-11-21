@@ -1,144 +1,74 @@
 # AlertAR
 
-AlertAR es un prototipo de ciudad inteligente para monitorear un paso bajo nivel. Un ESP32 toma mediciones de dos carriles y de presencia de agua, evalúa el riesgo localmente, informa el estado mediante semáforo y pantalla LCD, y envía eventos a una API REST cuando tiene conexión.
+AlertAR es un prototipo de ciudad inteligente para supervisar **pasos bajo nivel** (túneles por debajo de las vías del tren). En cada paso, un ESP32 mide si hay obstrucciones en los dos carriles y si se acumula agua, decide localmente si el paso está habilitado y lo indica con un semáforo y una pantalla. Además envía cada medición a un servidor, donde un panel web muestra en vivo el estado de todos los pasos, su historial, estadísticas y un mapa de la ciudad.
 
 **Presentación:** https://alertar-presentacion.pages.dev  
 **Dashboard:** https://alertar.pages.dev
 
-**Repositorio:** [santinohicke/alertar](https://github.com/santinohicke/alertar) · **Arquitectura:** ESP32 + FreeRTOS + Flask REST API + SQLite.
-
-El repositorio contiene el firmware, el circuito de simulación, el backend Flask, el panel y los scripts de despliegue. No incluye claves API, bases de datos, respaldos ni firmware compilado. La API FastAPI anterior que ya estaba instalada en la Raspberry Pi no forma parte de este proyecto; el adaptador de `deploy/raspi/` se integra con ella.
-
-## Cómo funciona
+**Repositorio:** [santinohicke/alertar](https://github.com/santinohicke/alertar) · Repositorio del equipo: [Agusttin-0/AlertAR](https://github.com/Agusttin-0/AlertAR)
 
 ```text
-Sensores ultrasónicos + sensor de agua
-                  │
-                  ▼
-          ESP32 / lógica local
-         ├─ LEDs y pantalla LCD
-         ├─ telemetría por puerto serie
-         └─ cola persistente en LittleFS
-                  │ HTTPS + JSON
-                  ▼
-              API REST
-         ├─ validación y autenticación
-         ├─ almacenamiento en SQLite
-         └─ estado, historial y panel web
+ Paso a nivel                      Servidor                         Navegador
+┌───────────────────┐  HTTPS   ┌─────────────────────────┐ HTTPS ┌──────────────┐
+│ sensores → ESP32  │ ───────► │ API Flask + SQLite      │ ────► │ panel web    │
+│ semáforo y LCD    │  eventos │ validación y resúmenes  │       │ en vivo      │
+└───────────────────┘          └─────────────────────────┘       └──────────────┘
 ```
 
-La decisión de seguridad no depende de Internet: el ESP32 procesa los sensores y actualiza las salidas localmente. La conexión agrega registro histórico y supervisión remota. Si la red o el servidor no están disponibles, los eventos pendientes se guardan en LittleFS y se reenvían cuando vuelve la comunicación.
+El ESP32 decide la seguridad por su cuenta: si se corta Internet, el semáforo sigue funcionando y las mediciones se guardan para enviarlas después.
 
-## Subsistemas y tecnologías
+## Sistemas
 
-### Firmware ESP32
+| Sistema | Qué hace | Dónde está | Documento |
+|---|---|---|---|
+| **Recorrido de los datos** | Cómo viaja una medición desde el sensor hasta el panel, qué identidades y horas lleva y qué pasa si algo falla | — | [docs/arquitectura.md](docs/arquitectura.md) |
+| **Firmware del ESP32** | Mide los carriles (ultrasonido) y el agua, aplica histéresis y tiempos de confirmación, decide uno de nueve estados y maneja LEDs y LCD | `AlertAR-2/src/` | [docs/firmware.md](docs/firmware.md) · [tabla de estados](docs/tabla_logica.md) |
+| **Conectividad** | Convierte cada estado en un evento, lo guarda en una cola que sobrevive a reinicios y lo envía por HTTPS con reintentos | `AlertAR-2/src/conectividad.*` | [docs/conectividad.md](docs/conectividad.md) |
+| **API y base de datos** | Recibe y valida eventos, evita duplicados, guarda en SQLite y calcula estado, estadísticas y exportaciones | `backend/app.py`, `panel.py`, `estadisticas.py` | [docs/api.md](docs/api.md) |
+| **Seguridad** | Contraseña del panel, claves por dispositivo, sesiones, CSRF, límites de ritmo y control de secretos | `backend/panel.py`, `scripts/` | [docs/seguridad.md](docs/seguridad.md) |
+| **Panel web** | Monitoreo en vivo, historial, estadísticas y mapa de CABA; alta y baja de pasos | `backend/templates/`, `backend/static/` | [docs/panel.md](docs/panel.md) |
+| **Despliegue** | Servidor con gunicorn y Tailscale Funnel; cómo instalarlo, actualizarlo o llevarlo a otro servidor | `deploy/servidor/`, `deploy/raspi/` | [docs/despliegue.md](docs/despliegue.md) · [Raspberry Pi](docs/raspberry.md) |
+| **Estado del proyecto** | Qué está implementado, qué se comprobó y qué falta validar | — | [docs/estado.md](docs/estado.md) |
 
-El proyecto activo está en `AlertAR-2/` y usa C++ con Arduino Framework, compilado con PlatformIO.
+## Requisitos y credenciales en un vistazo
 
-- Dos sensores ultrasónicos estiman la altura de una obstrucción en cada carril.
-- Un sensor analógico detecta agua con histéresis y tiempos de confirmación para evitar cambios espurios.
-- La lógica genera códigos `OK`, `INF` y `ERR`, y controla LEDs verde, amarillo y rojo y una pantalla LCD I2C.
-- La lectura ultrasónica se realiza con interrupciones para no bloquear el ciclo principal.
-- La telemetría de diagnóstico se emite como JSON por el puerto serie.
+- **Para simular un paso:** Visual Studio Code con PlatformIO y Wokwi, y la **clave de dispositivo** del paso (se obtiene al crearlo en el panel). Se coloca en `AlertAR-2/include/conectividad_secrets.h`, que no se sube a Git.
+- **Para usar el panel:** la **contraseña del panel** (la clave administrativa del servidor). La sesión dura 8 horas.
+- **Para desplegar el servidor:** Linux con systemd, Python 3.11 o posterior, Tailscale y las variables privadas del servicio. Ver [docs/despliegue.md](docs/despliegue.md).
+- Cada clave de dispositivo solo puede enviar datos de su propio paso. Ninguna clave está en el repositorio. Detalle en [docs/seguridad.md](docs/seguridad.md).
 
-### Persistencia y conectividad
+## Simular un paso con Wokwi
 
-- Wi-Fi para Wokwi mediante `Wokwi-GUEST`.
-- HTTPS con validación del certificado del servidor; no se usa una conexión TLS insegura.
-- Eventos JSON con identificador y secuencia para que los reintentos sean idempotentes.
-- Cola persistente en LittleFS para tolerar cortes de red o del servidor.
-- Reintentos con espera progresiva y respeto de respuestas `429`, `503` y `Retry-After`.
-- Tareas separadas de FreeRTOS para registro y transmisión, sin detener la lógica de sensores.
+1. Abrir la carpeta `AlertAR-2` en Visual Studio Code (extensiones PlatformIO IDE y Wokwi Simulator).
+2. Copiar `include/conectividad_secrets.example.h` como `include/conectividad_secrets.h`.
+3. Para probar solo sensores, LEDs y LCD, dejar `ALERTAR_CONECTIVIDAD_HABILITADA` en `false`. Para enviar al servidor, ponerlo en `true`, completar la clave del paso y su `dispositivo_id` en la URL de reserva, y ajustar `DISPOSITIVO` y `PASO` en `src/conectividad_config.h`.
+4. **PlatformIO: Build** y luego **Wokwi: Start Simulator**. Wokwi no recompila: después de cada cambio hay que volver a compilar.
 
-### Simulación con Wokwi
+En el simulador se mueven los objetos frente a los sensores y el control del agua; el monitor serie muestra el estado y el diagnóstico de la conexión.
 
-`AlertAR-2/diagram.json` describe el circuito simulado y `AlertAR-2/wokwi.toml` indica a Wokwi qué firmware y archivo ELF debe cargar. PlatformIO instala las bibliotecas declaradas, compila el firmware y genera la imagen fusionada usada por el simulador.
-
-La simulación permite cambiar las distancias y el nivel de agua, observar LEDs y LCD, y revisar los JSON de estado y conectividad en el monitor serie.
-
-### API REST y servidor
-
-El servicio publicado se ejecuta en una Raspberry Pi. La aplicación usa Flask para las rutas modernas y el panel, conserva compatibilidad con una API FastAPI anterior mediante un adaptador ASGI y se sirve con Uvicorn. Los eventos se almacenan en SQLite. El código de esa API anterior no está incluido aquí.
-
-La API se expone mediante Tailscale Funnel / HTTPS Ingress inverso. El firmware usa una clave exclusiva y limitada a ingesta; la clave administrativa del panel nunca se instala en el ESP32. Ninguna clave privada está incluida en el repositorio.
-
-Interfaz principal:
-
-| Método | Ruta | Uso |
-|---|---|---|
-| `GET` | `/health` | Estado básico del servicio |
-| `POST` | `/api/eventos` | Recibir un evento del ESP32 |
-| `POST` | `/api/dispositivos/{id}/reserva` | Reservar secuencias para una instalación |
-| `GET` | `/api/pasos/{id}/estado` | Consultar el último estado conocido |
-| `GET` | `/api/pasos/{id}/historial` | Consultar eventos anteriores |
-| `GET` | `/api/panel/{id}` | Datos acotados para el panel |
-
-El backend en `backend/` valida el contrato JSON, autentica la ingesta, evita duplicados por identidad y secuencia, limita la frecuencia de solicitudes y separa la fecha de medición de la fecha de recepción. La API publicada requiere autenticación; la URL por sí sola no permite escribir eventos ni leer el historial.
-
-## Ejecutar la simulación
-
-### Requisitos
-
-- Visual Studio Code.
-- Extensiones PlatformIO IDE y Wokwi Simulator.
-- Git.
-
-### Preparación
-
-1. Clonar el repositorio y abrir la carpeta `AlertAR-2` en Visual Studio Code.
-2. Crear la configuración local a partir de la plantilla:
-
-   ```bash
-   cp include/conectividad_secrets.example.h include/conectividad_secrets.h
-   ```
-
-3. Para probar solamente sensores, LEDs y LCD, dejar `ALERTAR_CONECTIVIDAD_HABILITADA` en `false`.
-4. Para conectar una instancia autorizada del servidor, completar en el archivo local la clave de dispositivo entregada por el administrador y cambiar la opción a `true`. La plantilla contiene la URL pública de AlertAR.
-5. Ejecutar **PlatformIO: Build** y luego **Wokwi: Start Simulator** desde la paleta de comandos.
-
-El archivo `include/conectividad_secrets.h` es local y está ignorado por Git. La plantilla pública no contiene valores utilizables.
-
-## Estructura pública
+## Estructura del repositorio
 
 ```text
-AlertAR-2/
-├── diagram.json                 circuito de Wokwi
-├── platformio.ini               placa, framework y dependencias
-├── wokwi.toml                   configuración del simulador
-├── include/
-│   └── conectividad_secrets.example.h
-├── scripts/merge_firmware.py    imagen fusionada para Wokwi
-└── src/
-    ├── main.cpp                 sensores, LCD, LEDs y ciclo principal
-    ├── logica.h                 reglas y códigos de estado
-    ├── ultrasonido.*            medición no bloqueante
-    ├── conectividad.*           Wi-Fi, HTTPS y tareas de envío
-    ├── conectividad_config.h    parámetros no secretos
-    ├── registro.h               cola persistente
-    ├── protocolo.h              contrato y confirmaciones
-    └── certificado.h            autoridad certificante pública
-tests/                           pruebas nativas de lógica y protocolo
-backend/                         API Flask, panel, ejemplo y pruebas
-deploy/raspi/                    adaptador, instalación y watchdog de la Pi
-tabla_logica.md                  tabla funcional de estados
-CONECTIVIDAD.md                  transporte y límites conocidos
-IMPLEMENTACION.md                componentes y alcance
-PANEL_RASPBERRY.md               despliegue y validación pendiente
+AlertAR-2/          firmware del ESP32 y circuito de Wokwi
+tests/              pruebas C++ de la lógica, la cola y el protocolo
+backend/            API, panel web, estadísticas, simulador y pruebas
+deploy/servidor/    plantilla del servicio para un servidor Linux
+deploy/raspi/       instalación anterior en una Raspberry Pi
+scripts/            control de secretos antes de cada push
+docs/               documentación de cada sistema
 ```
 
-La carpeta `AlertAR/` conserva la primera versión del circuito y del sketch como referencia. El desarrollo y la simulación actuales se realizan en `AlertAR-2/`.
+## Ramas
 
-Para ejecutar la API en desarrollo local, ver [backend/README.md](backend/README.md). Ese modo no exige autenticación y debe permanecer en `127.0.0.1`. La instalación de la Pi requiere su API FastAPI anterior; ver [PANEL_RASPBERRY.md](PANEL_RASPBERRY.md).
+| Rama | Contenido |
+|---|---|
+| `main` | Proyecto real |
+| `demo` | `main` más herramientas para presentaciones: clave visible de cada dispositivo en el panel, historial artificial y prueba de carga. No usar en un despliegue real |
 
-## Seguridad antes de publicar
+Los cambios entran a `main` por pull request y después se integran en `demo`, nunca al revés.
 
-- No agregar `conectividad_secrets.h`, archivos `.env`, claves privadas, bases SQLite, respaldos, registros de diagnóstico ni binarios compilados.
-- No publicar firmware `.bin` o `.elf`: una credencial puede quedar incorporada dentro del binario.
-- Ejecutar `bash scripts/verificar_secretos.sh` antes de cada push.
-- GitHub Actions repite ese control en cada push y pull request.
-- Si una credencial llega a un commit, debe revocarse y reemplazarse; borrarla en un commit posterior no elimina la copia del historial.
+## Pruebas y controles
 
-## Pruebas
-
-Las pruebas C++ de `tests/` verifican la lógica de estados, el orden y la capacidad de la cola y el contrato de comunicación. Los ejecutables generados y las evidencias locales no forman parte del repositorio.
-
+- `tests/`: lógica de estados (2.700 combinaciones), cola y protocolo del firmware, en C++.
+- `backend/tests/`: 48 pruebas de API, panel, autenticación, estadísticas, exportación, borrado y límites de ritmo. Se ejecutan desde `backend/` con `.venv/bin/python -m unittest discover -s tests`; instalación local en [backend/README.md](backend/README.md).
+- `scripts/verificar_secretos.sh` y GitHub Actions impiden subir claves, bases de datos o binarios.
